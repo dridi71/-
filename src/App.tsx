@@ -198,6 +198,7 @@ export default function App() {
         wordItems={wordItems}
         categories={categories}
         rawText={text}
+        aiResult={aiResult}
       />
 
     </div>

@@ -25,7 +25,7 @@ export const GrammarTabs: React.FC<GrammarTabsProps> = ({
   const [activeTab, setActiveTab] = useState<PosType>("noun");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const currentCategory = categories.find((c) => c.key === activeTab) || categories[0];
+  const currentCategory = categories.find((c) => c.key === activeTab) || categories[0] || null;
 
   // Filter words in active category by search query
   const filteredWords = currentCategory
@@ -35,6 +35,14 @@ export const GrammarTabs: React.FC<GrammarTabsProps> = ({
         w.root.includes(searchQuery.trim())
       )
     : [];
+
+  if (!currentCategory) {
+    return (
+      <div className="bg-[#0D1117] border border-[#2D3748] rounded-xl p-8 text-center text-[#718096] text-xs">
+        يرجى كتابة أو لصق نص عربي في المربع أعلاه لعرض التبويب والتحليل النحوي لأقسام الكلام.
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#0D1117] border border-[#2D3748] rounded-xl overflow-hidden transition-colors">

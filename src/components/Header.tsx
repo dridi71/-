@@ -104,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* AI Deep Grammar Analysis */}
+            {/* AI Deep Grammar & Rhetoric Analysis */}
             <button
               id="btn-ai-grammar"
               onClick={onRunAiAnalysis}
@@ -117,7 +117,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Sparkles className={`w-4 h-4 ${isAiLoading ? "animate-spin" : ""}`} />
               <span>
-                {isAiLoading ? "جاري التحليل بالنحو الذكي..." : "إعراب مفصل بالذكاء الاصطناعي"}
+                {isAiLoading ? "جاري تحليل النحو والبلاغة..." : "إعراب وتحليل بلاغي (AI)"}
               </span>
             </button>
           </div>

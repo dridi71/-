@@ -94,11 +94,21 @@ export interface AiCategoryBreakdown {
   examples: string[];
 }
 
+export interface AiRhetoricalFigure {
+  type: string; // "simile" | "metaphor" | "metonymy" | "badic" | "other"
+  typeArabicLabel: string; // e.g. "تشبيه بليغ", "استعارة مكنية", "استعارة تصريحية", "كناية عن صفة"
+  textSegment: string; // الشاهد أو العبارة البلاغية من النص
+  explanation: string; // تفكيك الصورة وشرح عناصرها
+  aestheticImpact: string; // الأثر الجمالي والبلاغي في النص
+}
+
 export interface AiGrammarResult {
   summary: string;
+  rhetoricalSummary?: string;
   totalWordsAnalyzed: number;
   sentencesIrab: AiSentenceIrab[];
   categoriesBreakdown: AiCategoryBreakdown[];
+  rhetoricalFigures?: AiRhetoricalFigure[];
 }
 
 export interface GrammarError {
@@ -110,4 +120,22 @@ export interface GrammarError {
   index: number;
   length: number;
 }
+
+export interface AiSynonymItem {
+  synonym: string;
+  nuance: string;
+  exampleUsage: string;
+  styleTip: string;
+}
+
+export interface AiSynonymsResult {
+  word: string;
+  stylisticOverview: string;
+  synonyms: AiSynonymItem[];
+  antonyms?: string[];
+  stylisticAdvice: string;
+}
+
+declare module 'html2pdf.js';
+
 
