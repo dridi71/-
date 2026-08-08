@@ -1,8 +1,29 @@
 {
-  "name": "react-example",
+  "name": "arabic-nlp-grammar-suite",
+  "version": "1.0.0",
+  "description": "منصة متكاملة لتحليل وتدقيق النصوص العربية، معجم لسان العرب لابن منظور، والتدقيق الإملائي والنحوي المباشر مع دعم النطق الصوتي الفصيح.",
+  "author": "Mohamed DRIDI <dridi0207@gmail.com>",
+  "license": "MIT",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dridi0207/arabic-nlp-grammar-suite.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dridi0207/arabic-nlp-grammar-suite/issues"
+  },
+  "homepage": "https://github.com/dridi0207/arabic-nlp-grammar-suite#readme",
+  "keywords": [
+    "arabic-nlp",
+    "grammar-checker",
+    "lisan-al-arab",
+    "text-to-speech",
+    "arabic-grammar",
+    "react",
+    "typescript",
+    "gemini-api"
+  ],
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",

@@ -1,0 +1,151 @@
+# منصة محلل النصوص والنحو العربي (Arabic NLP & Grammar Suite)
+
+منصة تفاعلية متكاملة لمعالجة وتدقيق النصوص العربية، تعتمد معجم **«لسان العرب»** للعلامة ابن منظور، وتوفر نظام تدقيق إملائي ونحوي مباشر، ونظام نطق صوتي فصيح (Text-to-Speech)، بالإضافة إلى تحليل أقسام الكلام والتكرارات والتوليد الذكي للإعراب.
+
+---
+
+## 🌟 الميزات الرئيسية (Key Features)
+
+### 1. ✍️ محرر وتدقيق إملائي ونحوي مباشر (Grammar & Spelling Inspector)
+- **اكتشاف الأخطاء الشائعة فورياً**:
+  - همزات القطع والوصل (مثل: `إسم` ➔ `اسم` ، `ان` ➔ `إن` ، `الى` ➔ `إلى`).
+  - التاء المربوطة والهاء (مثل: `مدرسه` ➔ `مدرسة` ، `اللة` ➔ `الله`).
+  - الألف المقصورة والياء (مثل: `حتي` ➔ `حتى` ، `علي المكتب` ➔ `على المكتب`).
+  - التمييز بين الضاد والظاء (`الظابط` ➔ `الضابط`).
+  - واو العطف والمسافات (`و أحمد` ➔ `وأحمد`).
+- **تطبيق التصحيح بضغطة واحدة**: إمكانية تصحيح الخطأ المفرد أو تصحيح كافة الملاحظات دفعة واحدة تلقائياً.
+
+### 2. 📚 اعتماد معجم «لسان العرب» لابن منظور (Lisan Al-Arab Lexicon)
+- **تأصيل اللفظ والمفردة**: عند النقر على أي كلمة في النص، يتم فتح بطاقة مفصلة تُظهر:
+  - **الباب والفصل**: وفق نظام الترتيب المعجمي لـ «لسان العرب» (الحرف الأخير للباب والأول للفصل).
+  - **الشرح المعجمي والمفهوم**: اقتباسات موسعة وموثقة من نص ابن منظور.
+  - **الشواهد والآيات**: الآيات القرأنية والأبيات الشعرية التي وردت في المعجم للتدليل على المعنى.
+  - **أبرز المشتقات**: استخراج مشتقات الجذر والجُمل السياقية.
+
+### 3. 🔊 محرك تحويل النص إلى كلام (Text-to-Speech - TTS)
+- **قراءة صوتیة ناصعة**: الاستماع لقراءة النص كاملاً أو الكلمات المفردة وشروحها بالنطق العربي الفصيح.
+- **إعدادات قارئ الصوت**:
+  - التحكم في سرعة القراءة (`0.75x` ، `1.0x` ، `1.25x` ، `1.5x`).
+  - اختيار صوت القارئ العربي المفضل المتاح في جهاز والمتصفح.
+  - زر استماع سريع ومباشر داخل بطاقة الكلمة والمعجم.
+
+### 4. 📊 التظليل التفاعلي وتحليل أقسام الكلام (Interactive POS & Frequency)
+- **تبويب أقسام الكلام**: تصنيف الكلمات ملوناً إلى (أسماء، أفعل، حروف، ضمائر، ظروف، أسماء إشارة، موصولة).
+- **إبراز الكلمات المكررة**: كشف نسبة التكرار وتلوين الكلمات الأكثر وروداً لتفادي الركاكة اللغوية.
+- **بحث وتصفية لحظية**: إبراز موضع أي كلمة أو جذر في النص ومطابقتها.
+
+### 5. 🤖 الإعراب والتحليل اللغوي بالذكاء الاصطناعي (Gemini AI Parser)
+- إعراب الجمل والكلمات تفصيلياً مع ذكر الموقع الإعرابي والعلامة والإصطلاح النحوي.
+- استخراج الخلاصات اللغوية والإحصاءات المتقدمة للنص.
+- إمكانية تصدير تقرير شامل بحجم الخط وتنسيقات مناسبة للطباعة والمشاركة.
+
+---
+
+## 🛠️ التقنيات المستخدمة (Tech Stack)
+
+- **Front-end**: React 18, Vite, TypeScript, Tailwind CSS
+- **Icons & UI**: Lucide React, Custom Dark/Luxury Aesthetic Components
+- **NLP & Lexicon Engine**: Custom Arabic NLP Tokenizer & `Lisan Al-Arab` Lexicon Engine
+- **Audio**: Web Speech Synthesis API
+- **Back-end Server**: Express.js (Node.js) on Cloud Run Container
+- **AI Integration**: `@google/genai` (Gemini API) for advanced syntactic analysis
+
+---
+
+## 🚀 تشغيل المشروع وتطويره (Getting Started)
+
+### تثبيت الحزم (Installation)
+```bash
+npm install
+```
+
+### تشغيل الخادم في وضع التطوير (Development)
+```bash
+npm run dev
+```
+سيعمل التطبيق على المنفذ المحدد: `http://localhost:3000`
+
+### بناء النسخة الإنتاجية (Production Build)
+```bash
+npm run build
+npm start
+```
+
+---
+
+## 🚀 تشغيل ونشر المشروع (Installation & Deployment)
+
+### 1. التثبيت المباشر عبر GitHub (Direct Install from GitHub)
+يمكن لأي مستخدم تثبيت وتشغيل التطبيق مباشرة من مستودع GitHub عبر الأوامر التالية:
+
+```bash
+# 1. استنساخ المستودع
+git clone https://github.com/dridi0207/arabic-nlp-grammar-suite.git
+cd arabic-nlp-grammar-suite
+
+# 2. تثبيت التبعيات
+npm install
+
+# 3. إعداد مفتاح API في ملف .env
+cp .env.example .env
+# ثم قم بإضافة GEMINI_API_KEY داخل ملف .env
+
+# 4. تشغيل خادم التطوير
+npm run dev
+```
+
+---
+
+### 2. التشغيل باستخدام Docker و Docker Compose (Docker Installation)
+يمكن تشغيل المشروع بيسر داخل حاوية Docker دون الحاجة لتثبيت Node.js محلياً:
+
+```bash
+# تشغيل الحاوية
+docker-compose up -d --build
+```
+سيكون التطبيق متاحاً على الرابط: `http://localhost:3000`
+
+---
+
+### 3. إصدارات GitHub وإطلاق النسخ (GitHub Releases Automation)
+تم إعداد سير عمل آلي مدمج (`.github/workflows/release.yml`) لإطلاق الإصدارات المجمعة تلقائياً عند إنشاء وسْم جديد (Git Tag):
+
+1. **إنشاء إطلاق جديد (Create a Release via Tag)**:
+   ```bash
+   git tag -a v1.0.0 -m "Release v1.0.0: Arabic NLP & Grammar Suite with Lisan Al-Arab & Speech Synthesis"
+   git push origin v1.0.0
+   ```
+2. تقوم **GitHub Actions** تلقائياً ببناء الملفات التجميعية وإرفاق ملف مضغوط `arabic-nlp-grammar-suite-release.zip` في صفحة **Releases** للمستودع ليتسنى للمستخدمين تنزيله واستخدامه فوراً.
+
+---
+
+## 🐙 إعداد المستودع الأول على GitHub (Initial GitHub Push Guide)
+
+1. **إنشاء مستودع جديد على GitHub**:
+   قم بإنشاء مستودع جديد خالي باسم `arabic-nlp-grammar-suite` على حسابك في GitHub.
+
+2. **ربط المجلد المحلي ورفعه (Push to GitHub)**:
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit: Arabic NLP & Grammar Suite with Lisan Al-Arab & Speech Synthesis"
+   git branch -M main
+   git remote add origin https://github.com/YOUR_USERNAME/arabic-nlp-grammar-suite.git
+   git push -u origin main
+   ```
+
+3. **إعداد متغيرات البيئة (Environment Variables)**:
+   قم بإنشاء ملف `.env` استناداً إلى `.env.example`:
+   ```env
+   GEMINI_API_KEY="your_gemini_api_key_here"
+   ```
+
+4. **سير العمل الآلي (GitHub Actions CI)**:
+   يتضمن المستودع ملف سير عمل جاهز تلقائياً في `.github/workflows/ci.yml` يقوم بالتحقق من جودة الكود وبنائه عند كل عملية `push` أو `pull request`.
+
+---
+
+## 📄 الترخيص (License)
+
+هذا المشروع مرخص بموجب ترخيص MIT - حقوق الطبع والنشر © 2026 **Mohamed DRIDI**.
+يرجى مراجعة ملف [LICENSE](./LICENSE) للمزيد من التفاصيل.

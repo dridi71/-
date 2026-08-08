@@ -1,0 +1,49 @@
+name: GitHub Release & Automated Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Build and Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Lint & Typecheck
+        run: npm run lint
+
+      - name: Build Production Assets
+        run: npm run build
+
+      - name: Create Release Archive
+        run: |
+          mkdir -p release-build
+          cp -r dist package.json package-lock.json server.ts .env.example README.md LICENSE release-build/
+          cd release-build && zip -r ../arabic-nlp-grammar-suite-release.zip . && cd ..
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: arabic-nlp-grammar-suite-release.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
