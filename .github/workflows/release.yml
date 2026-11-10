@@ -39,7 +39,7 @@ jobs:
           cd release-build && zip -r ../arabic-nlp-grammar-suite-release.zip . && cd ..
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: arabic-nlp-grammar-suite-release.zip
           draft: false
