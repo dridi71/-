@@ -136,6 +136,67 @@ export interface AiSynonymsResult {
   stylisticAdvice: string;
 }
 
+export interface AiAntonymItem {
+  antonym: string;
+  contrastDegree: string;
+  exampleUsage: string;
+  creativePrompt: string;
+}
+
+export interface AiAntonymsResult {
+  word: string;
+  creativeOverview: string;
+  rhetoricalDevice: string;
+  antonyms: AiAntonymItem[];
+  creativeWritingChallenge: string;
+}
+
 declare module 'html2pdf.js';
 
+export interface DocumentImportResult {
+  text: string;
+  fileName: string;
+  fileSize: number;
+  fileType: 'pdf' | 'docx' | 'doc' | 'txt' | 'md' | 'json' | 'other';
+  wordCount: number;
+  charCount: number;
+  pageCount?: number;
+  isScanned?: boolean;
+  method: 'mammoth' | 'pdfjs' | 'gemini-ai' | 'plaintext';
+}
 
+export interface SingleSentenceWordDetail {
+  word: string;
+  diacritized: string;
+  pos: string;
+  posArabic: string;
+  irabDetailed: string;
+  grammaticalCase: string; // e.g. "مرفوع" | "منصوب" | "مجرور" | "مجزوم" | "مبني"
+  marker: string; // e.g. "الضمة الظاهرة على آخره"
+  markerType?: string; // "أصلية ظاهرة" | "أصلية مقدرة" | "فرعية"
+  syntacticRelation?: string;
+  root?: string;
+  weight?: string;
+}
+
+export interface SingleSentenceSubClause {
+  clause: string;
+  clauseType: string;
+  irabRole: string;
+}
+
+export interface SingleSentenceIrabResult {
+  originalSentence: string;
+  diacritizedSentence: string;
+  sentenceType: string; // "جملة اسمية" | "جملة فعلية" | "شبه جملة" | "جملة شرطية"
+  sentenceRole: string; // المحل الإعرابي للجملة ككل
+  mainPillars: {
+    pillar1: string; // مثل: "المبتدأ: العلمُ" أو "الفعل: كَتَبَ"
+    pillar2: string; // مثل: "الخبر: نورٌ" أو "الفاعل: الطالبُ"
+    extra?: string; // متعلقات أو فضلة
+  };
+  wordsDetail: SingleSentenceWordDetail[];
+  subClauses?: SingleSentenceSubClause[];
+  grammaticalNotes: string[];
+  rhetoricalTouch?: string;
+}

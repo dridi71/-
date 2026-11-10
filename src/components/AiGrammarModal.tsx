@@ -16,6 +16,7 @@ import {
   Quote,
   Eye,
   Award,
+  Download,
 } from "lucide-react";
 
 interface AiGrammarModalProps {
@@ -88,8 +89,8 @@ export const AiGrammarModal: React.FC<AiGrammarModalProps> = ({
     };
   };
 
-  const handleCopyReport = () => {
-    if (!result) return;
+  const generateTextReport = (): string => {
+    if (!result) return "";
     let textReport = `=== التحليل النحوي والبلاغي المفصل (الذكاء الاصطناعي) ===\n\n`;
     textReport += `الملخص النحوي: ${result.summary}\n\n`;
 
@@ -115,8 +116,28 @@ export const AiGrammarModal: React.FC<AiGrammarModalProps> = ({
       textReport += `\n`;
     });
 
+    return textReport;
+  };
+
+  const handleCopyReport = () => {
+    const textReport = generateTextReport();
+    if (!textReport) return;
     navigator.clipboard.writeText(textReport);
     alert("تم نسخ تقرير التحليل النحوي والبلاغي كاملاً بنجاح!");
+  };
+
+  const handleDownloadTxtReport = () => {
+    const textReport = generateTextReport();
+    if (!textReport) return;
+    const blob = new Blob(["\uFEFF" + textReport], { type: "text/plain;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `تقرير_الإعراب_والبلاغة_${new Date().toISOString().slice(0, 10)}.txt`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleExportPdf = async () => {
@@ -444,6 +465,15 @@ export const AiGrammarModal: React.FC<AiGrammarModalProps> = ({
                     <span>تصدير تقرير PDF المنظم</span>
                   </>
                 )}
+              </button>
+
+              <button
+                onClick={handleDownloadTxtReport}
+                className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg bg-[#161B22] hover:bg-[#21262d] text-[#CBD5E0] hover:text-[#D4AF37] border border-[#2D3748] transition-colors"
+                title="تنزيل التقرير كملف نصي (.txt)"
+              >
+                <Download className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <span>تصدير ملف نصي (.TXT)</span>
               </button>
 
               <button

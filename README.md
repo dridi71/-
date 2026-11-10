@@ -1,6 +1,12 @@
-# منصة محلل النصوص والنحو العربي (Arabic NLP & Grammar Suite)
+# منصة محلل النصوص والنحو والبلاغة العربية (Arabic NLP & Grammar Suite)
 
-منصة تفاعلية متكاملة لمعالجة وتدقيق النصوص العربية، تعتمد معجم **«لسان العرب»** للعلامة ابن منظور، وتوفر نظام تدقيق إملائي ونحوي مباشر، ونظام نطق صوتي فصيح (Text-to-Speech)، بالإضافة إلى تحليل أقسام الكلام والتكرارات والتوليد الذكي للإعراب.
+[![CI - Build & Lint](https://github.com/dridi0207/arabic-nlp-grammar-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/dridi0207/arabic-nlp-grammar-suite/actions/workflows/ci.yml)
+[![Docker Build](https://github.com/dridi0207/arabic-nlp-grammar-suite/actions/workflows/docker.yml/badge.svg)](https://github.com/dridi0207/arabic-nlp-grammar-suite/actions/workflows/docker.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node Version](https://img.shields.io/badge/Node.js-%3E%3D20.0.0-green.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
+
+منصة تفاعلية متكاملة لمعالجة وتدقيق النصوص العربية، تعتمد معجم **«لسان العرب»** للعلامة ابن منظور، وتوفر نظام تدقيق إملائي ونحوي مباشر، ونظام نطق صوتي فصيح (Text-to-Speech)، وتحليل الصور البيانية والبلاغية (التشبيه، الاستعارة، الكناية)، بالإضافة إلى تحليل أقسام الكلام والتكرارات والتوليد الذكي للإعراب.
 
 ---
 
@@ -117,35 +123,31 @@ docker-compose up -d --build
    ```
 2. تقوم **GitHub Actions** تلقائياً ببناء الملفات التجميعية وإرفاق ملف مضغوط `arabic-nlp-grammar-suite-release.zip` في صفحة **Releases** للمستودع ليتسنى للمستخدمين تنزيله واستخدامه فوراً.
 
+### 4. النشر على منصة Vercel (Vercel Deployment)
+المشروع مهيأ بالكامل للنشر الفوري بنقرة واحدة على **Vercel** بفضل ملف التكوين `vercel.json` ونقاط النهاية السحابية `api/index.ts`:
+
+1. قم بربط مستودع GitHub بحسابك على [Vercel](https://vercel.com).
+2. في إعدادات المشروع (Project Settings):
+   - **Framework Preset**: Vite
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+3. أضف متغير البيئة:
+   - `GEMINI_API_KEY`: مفتاحك الخاص من Google AI Studio
+4. سيتم نشر الواجهة تلقائياً مع توجيه طلبات واجهة برمجة التطبيقات `/api/*` كدوال بدون خادم (Serverless Functions).
+
 ---
 
-## 🐙 إعداد المستودع الأول على GitHub (Initial GitHub Push Guide)
+## 📋 ملف البيان (Manifest File)
 
-1. **إنشاء مستودع جديد على GitHub**:
-   قم بإنشاء مستودع جديد خالي باسم `arabic-nlp-grammar-suite` على حسابك في GitHub.
-
-2. **ربط المجلد المحلي ورفعه (Push to GitHub)**:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit: Arabic NLP & Grammar Suite with Lisan Al-Arab & Speech Synthesis"
-   git branch -M main
-   git remote add origin https://github.com/YOUR_USERNAME/arabic-nlp-grammar-suite.git
-   git push -u origin main
-   ```
-
-3. **إعداد متغيرات البيئة (Environment Variables)**:
-   قم بإنشاء ملف `.env` استناداً إلى `.env.example`:
-   ```env
-   GEMINI_API_KEY="your_gemini_api_key_here"
-   ```
-
-4. **سير العمل الآلي (GitHub Actions CI)**:
-   يتضمن المستودع ملف سير عمل جاهز تلقائياً في `.github/workflows/ci.yml` يقوم بالتحقق من جودة الكود وبنائه عند كل عملية `push` أو `pull request`.
+يتضمن المشروع ملف بيان مفصل [README.mf](./README.mf) يوثق كافة المواصفات التقنية، الإصدارات، المنصات المدعومة، الوحدات الوظيفية، ومخطط المعالجة.
 
 ---
 
 ## 📄 الترخيص (License)
 
-هذا المشروع مرخص بموجب ترخيص MIT - حقوق الطبع والنشر © 2026 **Mohamed DRIDI**.
-يرجى مراجعة ملف [LICENSE](./LICENSE) للمزيد من التفاصيل.
+هذا المشروع مرخص بموجب رخصة **MIT** المفتوحة المصدر - حقوق الطبع والنشر © 2026 **Mohamed DRIDI**.  
+This project is open-source and licensed under the **MIT License**.  
+Ce projet est open-source et distribué sous les termes de la **Licence MIT**.
+
+يرجى مراجعة ملف [LICENSE](./LICENSE) للاطلاع على النص الكامل للرخصة.
+

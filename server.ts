@@ -4,12 +4,15 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 
+import mammoth from "mammoth";
+
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Initialize Gemini Client server-side
 const getGeminiClient = () => {
@@ -113,6 +116,97 @@ ${contextSentence ? `الجملة السياقية التي وردت فيها ا
     console.error("Gemini Synonyms API Error:", err);
     return res.status(500).json({
       error: "حدث خطأ أثناء اقتراح المرادفات بواسطة الذكاء الاصطناعي",
+      details: err?.message || String(err),
+    });
+  }
+});
+
+// API Endpoint: AI Antonyms & Creative Writing Opposites
+app.post("/api/antonyms", async (req, res) => {
+  try {
+    const { word, contextSentence, root } = req.body;
+    if (!word || typeof word !== "string" || word.trim().length === 0) {
+      return res.status(400).json({ error: "الرجاء تقديم كلمة صالحة لاستخراج المتضادات" });
+    }
+
+    const ai = getGeminiClient();
+    if (!ai) {
+      return res.status(500).json({
+        error: "مفتاح GEMINI_API_KEY غير متوفر. يتعذر إكمال استخراج المتضادات بالذكاء الاصطناعي.",
+      });
+    }
+
+    const prompt = `أنت أديب وناقد وبلاغي متخصص في أسرار البلاغة العربية (فن الطباق والمقابلة والتناقض الأدبي) وتنمية مهارات الكتابة الإبداعية والسرد الأدبي.
+المطلوب استخراج قائمة بالمتضادات (عكس المعنى) للكلمة التالية لتعزيز مهارات الكتابة الإبداعية للمستخدم، مع تقديم إرشادات كتابية وأمثلة بليغة توضح كيف يُبرز التضاد المعنى (فبضدها تتبين الأشياء).
+
+الكلمة المستهدفة: "${word.trim()}"
+${root ? `الجذر الصرفي: "${root}"` : ""}
+${contextSentence ? `الجملة السياقية التي وردت فيها: "${contextSentence}"` : ""}
+
+المطلوب:
+1. تقديم نظرة إبداعية نقدية (creativeOverview) حول بلاغة توظيف الضد لهذه الكلمة في تصوير المشاهد والتناقض الشعوري والوصفي.
+2. توضيح سر البلاغة المرتبط (rhetoricalDevice) مثل الطباق (إيجاب وسلب) أو المقابلة وكيفية توظيفه في التعبير.
+3. استخراج 3 إلى 5 متضادات دقيقة وغنية دلالياً بالتشكيل الكامل.
+4. مع كل متضاد:
+   - تحديد درجة ونوع التضاد (contrastDegree) (مثل: تضاد حاد ومباشر | تضاد اعتباري تدريجي | تضاد سياقي مجازي | تضاد سلب).
+   - جملة أدبية بليغة (exampleUsage) تجمع بين الكلمة وضدها أو تبرز المفارقة بأسلوب قصصي أو شعري رفيع.
+   - فكرة كتابية إبداعية (creativePrompt) تُلهم الكاتب لتطوير فكرة أو مشهد قائم على هذا التضاد.
+5. تقديم تحدٍ كتابي إبداعي (creativeWritingChallenge) عملي ومحفز للكاتب.
+
+قم بإرجاع النتيجة بصيغة JSON حصرية متوافقة مع هذا المخطط:
+{
+  "word": "${word.trim()}",
+  "creativeOverview": "نظرة نقدية وإبداعية حول جماليات توظيف التضاد لهذه الكلمة",
+  "rhetoricalDevice": "بيان سر الطباق أو المقابلة في إبراز المعنى",
+  "antonyms": [
+    {
+      "antonym": "الضد مع التشكيل الكامل",
+      "contrastDegree": "نوع التضاد ودرجته الدلالية",
+      "exampleUsage": "شاهد أدبي أو جملة إبداعية تجمع بين الكلمة وضدها بأسلوب بليغ",
+      "creativePrompt": "فكرة وإرشاد للكاتب لتوظيف هذا الضد في صياغة مشهد أدبي"
+    }
+  ],
+  "creativeWritingChallenge": "تحدٍ كتابي إبداعي لتطبيق التضاد في فقرة من خيال الكاتب"
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            word: { type: Type.STRING },
+            creativeOverview: { type: Type.STRING },
+            rhetoricalDevice: { type: Type.STRING },
+            antonyms: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  antonym: { type: Type.STRING },
+                  contrastDegree: { type: Type.STRING },
+                  exampleUsage: { type: Type.STRING },
+                  creativePrompt: { type: Type.STRING },
+                },
+                required: ["antonym", "contrastDegree", "exampleUsage", "creativePrompt"],
+              },
+            },
+            creativeWritingChallenge: { type: Type.STRING },
+          },
+          required: ["word", "creativeOverview", "rhetoricalDevice", "antonyms", "creativeWritingChallenge"],
+        },
+      },
+    });
+
+    const responseText = response.text || "{}";
+    const data = JSON.parse(responseText);
+    return res.json(data);
+  } catch (err: any) {
+    console.error("Gemini Antonyms API Error:", err);
+    return res.status(500).json({
+      error: "حدث خطأ أثناء استخراج المتضادات بواسطة الذكاء الاصطناعي",
       details: err?.message || String(err),
     });
   }
@@ -357,6 +451,236 @@ ${text.slice(0, 3000)}
     console.error("Gemini API Error:", err);
     return res.status(500).json({
       error: "حدث خطأ أثناء إجراء التحليل الإعرابي بواسطة الذكاء الاصطناعي",
+      details: err?.message || String(err),
+    });
+  }
+});
+
+// API Endpoint: Extract Arabic text from documents (PDF, Word docx/doc) using Gemini AI & Mammoth
+app.post("/api/extract-document", async (req, res) => {
+  try {
+    const { fileName, mimeType, base64Data } = req.body;
+    if (!base64Data || typeof base64Data !== "string") {
+      return res.status(400).json({ error: "الرجاء تقديم بيانات المستند المشفرة (base64)" });
+    }
+
+    const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, "");
+    const lowerName = (fileName || "").toLowerCase();
+
+    // If it's a plain text, markdown, or json file, decode directly
+    const isPlainText = lowerName.endsWith(".txt") || lowerName.endsWith(".md") || lowerName.endsWith(".json") || (mimeType && mimeType.startsWith("text/"));
+    if (isPlainText) {
+      try {
+        const textContent = Buffer.from(cleanBase64, "base64").toString("utf-8");
+        return res.json({
+          text: textContent.trim(),
+          method: "plaintext",
+          fileName,
+        });
+      } catch (tErr) {
+        console.warn("Text decoding note:", tErr);
+      }
+    }
+
+    // If it's a Word .docx file, attempt extraction with mammoth
+    const isDocx = lowerName.endsWith(".docx") || mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (isDocx) {
+      try {
+        const buffer = Buffer.from(cleanBase64, "base64");
+        const mammothResult = await mammoth.extractRawText({ buffer });
+        if (mammothResult.value && mammothResult.value.trim().length > 0) {
+          return res.json({
+            text: mammothResult.value.trim(),
+            method: "mammoth",
+            fileName,
+          });
+        }
+      } catch (mErr) {
+        console.warn("Server mammoth extraction note:", mErr);
+      }
+    }
+
+    // Call Gemini 2.5 Flash for document parsing, scanned PDFs, or complex layouts
+    const ai = getGeminiClient();
+    if (!ai) {
+      return res.status(500).json({
+        error: "مفتاح GEMINI_API_KEY غير متوفر لاستخراج النص بواسطة الذكاء الاصطناعي.",
+      });
+    }
+
+    // Determine correct document MIME type for Gemini
+    let resolvedMimeType = "application/pdf";
+    if (mimeType && mimeType.includes("pdf")) {
+      resolvedMimeType = "application/pdf";
+    } else if (lowerName.endsWith(".pdf")) {
+      resolvedMimeType = "application/pdf";
+    } else if (mimeType && mimeType.startsWith("image/")) {
+      resolvedMimeType = mimeType;
+    } else if (mimeType && mimeType.length > 0) {
+      resolvedMimeType = mimeType;
+    }
+
+    const prompt = `أنت خبير لغوي محترف متخصص في استخراج النصوص العربية من الوثائق والمستندات (PDF / Word / صور) بدقة فائقة.
+المطلوب منك بدقة:
+1. استخراج كامل النص العربي الأصلي الموجود في هذا المستند دون أي نقصان أو تلخيص.
+2. الحفاظ التام على تسلسل الفقرات، الفواصل، والعناوين كما وردت في المستند.
+3. معالجة وتصحيح أي تشوهات أو حروف مقطعة أو كلمات معكوسة ناتجة عن تصدير ملف الـ PDF ليعود النص فصيحاً ومترابطاً وسليم القراءة من اليمين إلى اليسار.
+4. الحفاظ على التشكيل وعلامات الترقيم الأصلية إن وجدت.
+5. الإخراج المطلوب: أرسل النص العربي المستخرج فقط مباشرة دون أي مقدمة أو خاتمة أو شروحات إضافية ودون استخدام وسوم كود ماركداون (\`\`\`).`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                mimeType: resolvedMimeType,
+                data: cleanBase64,
+              },
+            },
+            {
+              text: prompt,
+            },
+          ],
+        },
+      ],
+    });
+
+    const extractedText = (response.text || "").trim();
+    return res.json({
+      text: extractedText,
+      method: "gemini-ai",
+      fileName,
+    });
+  } catch (err: any) {
+    console.error("Document extraction error:", err);
+    return res.status(500).json({
+      error: "حدث خطأ أثناء استخراج النص من المستند",
+      details: err?.message || String(err),
+    });
+  }
+});
+
+// API Endpoint: Dedicated Sentence Grammar & Irab Analysis
+app.post("/api/analyze-sentence", async (req, res) => {
+  try {
+    const { sentence } = req.body;
+    if (!sentence || typeof sentence !== "string" || sentence.trim().length === 0) {
+      return res.status(400).json({ error: "الرجاء تقديم جملة صالحة للإعراب" });
+    }
+
+    const ai = getGeminiClient();
+    if (!ai) {
+      return res.status(500).json({
+        error: "مفتاح GEMINI_API_KEY غير متوفر. يتعذر إكمال التحليل الإعرابي للجملة.",
+      });
+    }
+
+    const prompt = `أنت علامة وأستاذ كرسي النحو والصرف والبلاغة في مجمع اللغة العربية، خبير في إعراب القرآن الكريم وشواهد الشعر العربي ومصنفات سيبويه وابن هشام والزمخشري.
+المطلوب منك إعراب الجملة العربية التالية إعراباً وافياً وشاملاً ودقيقاً للغاية:
+
+الجملة المراد إعرابها:
+"${sentence.trim()}"
+
+المعايير النحوية الإلزامية:
+1. ضبط الجملة بالتشكيل التام والدقيق لكل حرف وحركة في (diacritizedSentence).
+2. بيان نوع الجملة (جملة فعلية، جملة اسمية، شبه جملة، جملة شرطية...).
+3. بيان المحل الإعرابي للجملة ككل (sentenceRole): هل لها محل من الإعراب (كأن تكون خبرية، حالية، نعتية، مقول قول، جواب شرط جازم مقترن بالفاء...) أو لا محل لها من الإعراب (ابتدائية، استئنافية، صلة موصول، اعتراضية...).
+4. توضيح الأركان الأساسية للجملة (mainPillars): كالمبتدأ والخبر، أو الفعل والفاعل ونائبه، أو اسم كان وخبرها، أو أداة الشرط وفعل الشرط وجوابه.
+5. تفكيك كافة كلمات الجملة وإعراب كل كلمة أو ضمير متصل أو حرف إعراباً تفصيلياً (wordsDetail):
+   - الكلمة مشكولة تماماً (diacritized).
+   - نوعها (pos) وتسميتها بالعربية (posArabic).
+   - الإعراب التفصيلي المعياري الكامل (irabDetailed) مثل: "فعل ماض مبني على الفتح الظاهر على آخره لا محل له من الإعراب والفاعل ضمير مستتر تقديره هو".
+   - الحالة الإعرابية (grammaticalCase): مرفوع، منصوب، مجرور، مجزوم، مبني في محل...
+   - علامة الإعراب (marker): الضمة، الفتحة، الكسرة، السكون، حذف النون، ثبوت النون، الألف، الياء، حذف حرف العلة...
+   - نوع العلامة (markerType): أصلية ظاهرة، أصلية مقدرة للتعذر أو الثقل أو اشتغال المحل، أو فرعية.
+   - الارتباط النحوي (syntacticRelation): كبيان تعلقه بالفعل أو المبتدأ.
+   - الجذر الصرفي (root) والوزن (weight).
+6. الجمل الفرعية ومحلها من الإعراب (subClauses) إن وُجدت.
+7. فوائد ولطائف نحوية (grammaticalNotes): ملاحظات دقيقة عن التقديم والتأخير، الحذف، التضمين، أو القواعد النحوية المستفادة.
+8. اللمسة البلاغية والجمالية في صياغة الجملة (rhetoricalTouch).`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            originalSentence: { type: Type.STRING },
+            diacritizedSentence: { type: Type.STRING },
+            sentenceType: { type: Type.STRING },
+            sentenceRole: { type: Type.STRING },
+            mainPillars: {
+              type: Type.OBJECT,
+              properties: {
+                pillar1: { type: Type.STRING },
+                pillar2: { type: Type.STRING },
+                extra: { type: Type.STRING },
+              },
+              required: ["pillar1", "pillar2"],
+            },
+            wordsDetail: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  word: { type: Type.STRING },
+                  diacritized: { type: Type.STRING },
+                  pos: { type: Type.STRING },
+                  posArabic: { type: Type.STRING },
+                  irabDetailed: { type: Type.STRING },
+                  grammaticalCase: { type: Type.STRING },
+                  marker: { type: Type.STRING },
+                  markerType: { type: Type.STRING },
+                  syntacticRelation: { type: Type.STRING },
+                  root: { type: Type.STRING },
+                  weight: { type: Type.STRING },
+                },
+                required: ["word", "diacritized", "pos", "posArabic", "irabDetailed", "grammaticalCase", "marker"],
+              },
+            },
+            subClauses: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  clause: { type: Type.STRING },
+                  clauseType: { type: Type.STRING },
+                  irabRole: { type: Type.STRING },
+                },
+                required: ["clause", "clauseType", "irabRole"],
+              },
+            },
+            grammaticalNotes: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+            },
+            rhetoricalTouch: { type: Type.STRING },
+          },
+          required: [
+            "originalSentence",
+            "diacritizedSentence",
+            "sentenceType",
+            "sentenceRole",
+            "mainPillars",
+            "wordsDetail",
+            "grammaticalNotes",
+          ],
+        },
+      },
+    });
+
+    const responseText = response.text || "{}";
+    const data = JSON.parse(responseText);
+    return res.json(data);
+  } catch (err: any) {
+    console.error("Sentence Irab API Error:", err);
+    return res.status(500).json({
+      error: "حدث خطأ أثناء إجراء إعراب الجملة بالذكاء الاصطناعي",
       details: err?.message || String(err),
     });
   }

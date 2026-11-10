@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { TextToken, WordItem, HighlightMode, PosType, GrammarError } from "../types";
 import { POS_DEFINITIONS, normalizeArabic, stripDiacritics } from "../utils/arabicNlp";
 import { TtsPlayerBar } from "./TtsPlayerBar";
@@ -7,6 +7,7 @@ import {
   applyCorrection,
   applyAllCorrections,
 } from "../utils/grammarChecker";
+import { parseDocumentFile } from "../utils/documentParser";
 import {
   Eye,
   Edit3,
@@ -24,6 +25,10 @@ import {
   ArrowLeft,
   HelpCircle,
   BookOpenCheck,
+  Download,
+  Copy,
+  FileDown,
+  Upload,
 } from "lucide-react";
 
 interface InteractiveTextReaderProps {
@@ -35,6 +40,8 @@ interface InteractiveTextReaderProps {
   onSelectWord: (wordItem: WordItem | null) => void;
   highlightMode: HighlightMode;
   onSetHighlightMode: (mode: HighlightMode) => void;
+  onOpenImportModal?: () => void;
+  onOpenSentenceIrab?: (sentence?: string) => void;
 }
 
 export const InteractiveTextReader: React.FC<InteractiveTextReaderProps> = ({
@@ -46,6 +53,8 @@ export const InteractiveTextReader: React.FC<InteractiveTextReaderProps> = ({
   onSelectWord,
   highlightMode,
   onSetHighlightMode,
+  onOpenImportModal,
+  onOpenSentenceIrab,
 }) => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -86,6 +95,55 @@ export const InteractiveTextReader: React.FC<InteractiveTextReaderProps> = ({
   const handleFixAllErrors = () => {
     const updated = applyAllCorrections(text, grammarErrors);
     onChangeText(updated);
+  };
+
+  const handleExportTextFile = () => {
+    if (!text || text.trim().length === 0) return;
+    const blob = new Blob(["\uFEFF" + text], { type: "text/plain;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `النص_العربي_${new Date().toISOString().slice(0, 10)}.txt`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyText = () => {
+    if (!text || text.trim().length === 0) return;
+    navigator.clipboard.writeText(text);
+    alert("تم نسخ النص بالكامل إلى الحافظة بنجاح!");
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState<boolean>(false);
+  const [isImportingFile, setIsImportingFile] = useState<boolean>(false);
+
+  const handleFileImport = async (file: File) => {
+    setIsImportingFile(true);
+    try {
+      const result = await parseDocumentFile(file);
+      if (result.text && result.text.trim()) {
+        onChangeText(result.text.trim());
+      } else {
+        alert("لم يتم العثور على أي نصوص قابلة للاستخراج في هذا المستند.");
+      }
+    } catch (err: any) {
+      console.error("Document import error:", err);
+      alert(err?.message || "تعذر استخراج النص من المستند المختار.");
+    } finally {
+      setIsImportingFile(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleFileImport(file);
+    }
   };
 
   return (
@@ -195,6 +253,82 @@ export const InteractiveTextReader: React.FC<InteractiveTextReaderProps> = ({
               >
                 <Layers className="w-3 h-3" />
                 النحو
+              </button>
+            </div>
+          )}
+
+          {/* Quick Import Text Button */}
+          <div className="flex items-center gap-1 border-r border-[#2D3748] pr-2 mr-1">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,.doc,.txt,.md,.text,.rtf,.json"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileImport(file);
+                e.target.value = "";
+              }}
+              className="hidden"
+              id="file-input-reader"
+            />
+            <button
+              id="btn-quick-import-txt"
+              onClick={() => {
+                if (onOpenImportModal) {
+                  onOpenImportModal();
+                } else {
+                  fileInputRef.current?.click();
+                }
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold bg-[#0D1117] hover:bg-[#161B22] text-[#CBD5E0] hover:text-[#D4AF37] border border-[#2D3748] hover:border-[#D4AF37]/50 transition-all"
+              title="استيراد نص أو مستند (PDF / Word / TXT)"
+            >
+              <Upload className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span className="hidden sm:inline">استيراد (PDF / Word)</span>
+              <span className="sm:hidden">استيراد</span>
+            </button>
+          </div>
+
+          {/* Quick Export Text Button */}
+          {text.trim().length > 0 && (
+            <div className="flex items-center gap-1 border-r border-[#2D3748] pr-2 mr-1">
+              <button
+                id="btn-quick-export-txt"
+                onClick={handleExportTextFile}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold bg-[#0D1117] hover:bg-[#161B22] text-[#CBD5E0] hover:text-[#D4AF37] border border-[#2D3748] hover:border-[#D4AF37]/50 transition-all"
+                title="تنزيل النص الحالي كملف نصي (.txt)"
+              >
+                <Download className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <span className="hidden sm:inline">تصدير النص (.txt)</span>
+                <span className="sm:hidden">تصدير (.txt)</span>
+              </button>
+
+              <button
+                id="btn-quick-copy-txt"
+                onClick={handleCopyText}
+                className="p-1.5 rounded-md text-xs text-[#A0AEC0] hover:text-white bg-[#0D1117] hover:bg-[#161B22] border border-[#2D3748] transition-colors"
+                title="نسخ النص كاملاً إلى الحافظة"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Quick Sentence Irab Button */}
+          {onOpenSentenceIrab && (
+            <div className="flex items-center gap-1 border-r border-[#2D3748] pr-2 mr-1">
+              <button
+                id="btn-quick-sentence-irab"
+                onClick={() => {
+                  const firstSentence = text.split(/[.؟!;\n]+/).map((s) => s.trim()).filter((s) => s.length > 2)[0] || "";
+                  onOpenSentenceIrab(firstSentence);
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/35 transition-all"
+                title="إعراب جملة تفصيلياً بالذكاء الاصطناعي"
+              >
+                <BookOpenCheck className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <span className="hidden sm:inline">إعراب جملة</span>
+                <span className="sm:hidden">إعراب</span>
               </button>
             </div>
           )}
@@ -339,7 +473,37 @@ export const InteractiveTextReader: React.FC<InteractiveTextReaderProps> = ({
       )}
 
       {/* Main Content Area */}
-      <div className="p-6 min-h-[220px] relative space-y-4">
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setIsDragOver(false);
+          }
+        }}
+        onDrop={handleDrop}
+        className="p-6 min-h-[220px] relative space-y-4"
+      >
+        {/* Drag & Drop Visual Overlay */}
+        {isDragOver && (
+          <div className="absolute inset-0 z-30 m-2 rounded-xl border-2 border-dashed border-[#D4AF37] bg-[#161B22]/95 backdrop-blur-sm flex flex-col items-center justify-center gap-2 pointer-events-none animate-in fade-in duration-150">
+            <div className="p-3 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 animate-bounce">
+              <Upload className="w-8 h-8" />
+            </div>
+            <p className="text-sm font-bold text-white">أفلت المستند هنا لاستيراد النص العربي (PDF / Word / TXT / MD)</p>
+            <p className="text-xs text-[#A0AEC0]">يتم قراءة مستندات Word و PDF واستخراج النصوص والفقرات فوراً</p>
+          </div>
+        )}
+
+        {/* Importing file spinner */}
+        {isImportingFile && (
+          <div className="absolute inset-0 z-30 m-2 rounded-xl bg-[#161B22]/90 backdrop-blur-sm flex flex-col items-center justify-center gap-2 animate-in fade-in duration-150">
+            <div className="w-8 h-8 border-3 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm font-bold text-white">جارٍ استخراج وتنسيق النص من المستند...</p>
+          </div>
+        )}
         
         {/* TTS Speech Bar */}
         <TtsPlayerBar

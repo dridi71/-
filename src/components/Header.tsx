@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import {
   FileText,
   Sparkles,
@@ -6,14 +6,21 @@ import {
   BookOpen,
   Download,
   Info,
+  Github,
+  Upload,
+  BookOpenCheck,
 } from "lucide-react";
 import { SAMPLE_TEXTS, SampleText } from "../data/sampleTexts";
+import { parseDocumentFile } from "../utils/documentParser";
 
 interface HeaderProps {
   onSelectSample: (sample: SampleText) => void;
   onClear: () => void;
   onRunAiAnalysis: () => void;
   onExport: () => void;
+  onImportText?: (importedText: string) => void;
+  onOpenImportModal?: () => void;
+  onOpenSentenceIrab?: () => void;
   isAiLoading: boolean;
   hasText: boolean;
 }
@@ -23,9 +30,34 @@ export const Header: React.FC<HeaderProps> = ({
   onClear,
   onRunAiAnalysis,
   onExport,
+  onImportText,
+  onOpenImportModal,
+  onOpenSentenceIrab,
   isAiLoading,
   hasText,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (onOpenImportModal) {
+      onOpenImportModal();
+      return;
+    }
+
+    try {
+      const result = await parseDocumentFile(file);
+      if (result.text && onImportText) {
+        onImportText(result.text);
+      }
+    } catch (err: any) {
+      console.error("File parse error:", err);
+      alert(err?.message || "تعذر استخراج النص من الملف.");
+    }
+    e.target.value = "";
+  };
   return (
     <header className="bg-[#1A202C] border-b border-[#2D3748] sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
@@ -79,6 +111,32 @@ export const Header: React.FC<HeaderProps> = ({
               <FileText className="w-3.5 h-3.5 text-[#A0AEC0] pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2" />
             </div>
 
+            {/* Import Text / Document Button */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,.doc,.txt,.md,.text,.rtf,.json"
+              onChange={handleFileChange}
+              className="hidden"
+              id="file-input-header"
+            />
+            <button
+              id="btn-import-document"
+              onClick={() => {
+                if (onOpenImportModal) {
+                  onOpenImportModal();
+                } else {
+                  fileInputRef.current?.click();
+                }
+              }}
+              title="استيراد نص أو مستند (PDF / Word / TXT)"
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#CBD5E0] bg-[#161B22] hover:bg-[#21262d] hover:text-[#D4AF37] px-3 py-2 rounded-lg border border-[#2D3748] transition-colors"
+            >
+              <Upload className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span className="hidden sm:inline">استيراد (PDF / Word)</span>
+              <span className="sm:hidden">استيراد</span>
+            </button>
+
             {/* Clear Button */}
             {hasText && (
               <button
@@ -92,17 +150,29 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Export Summary Button */}
+            {/* Export Text & Report Button */}
             {hasText && (
               <button
                 id="btn-export-report"
                 onClick={onExport}
-                className="flex items-center gap-1.5 text-xs font-medium text-[#CBD5E0] bg-[#161B22] hover:bg-[#21262d] px-3 py-2 rounded-lg border border-[#2D3748] transition-colors"
+                title="تصدير النص والتقرير بصيغ متعددة (TXT, Markdown, PDF, CSV, JSON)"
+                className="flex items-center gap-1.5 text-xs font-semibold text-[#CBD5E0] bg-[#161B22] hover:bg-[#21262d] hover:text-[#D4AF37] px-3 py-2 rounded-lg border border-[#2D3748] transition-colors"
               >
                 <Download className="w-3.5 h-3.5 text-[#D4AF37]" />
-                <span>تصدير التقرير</span>
+                <span>تصدير النص والتقرير</span>
               </button>
             )}
+
+            {/* Dedicated Sentence Parsing Button */}
+            <button
+              id="btn-open-sentence-irab"
+              onClick={onOpenSentenceIrab}
+              title="إعراب جملة مخصصة بالذكاء الاصطناعي (تفكيك تركيبي وإعراب تفصيلي لكل كلمة ومحل الجملة)"
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#D4AF37] bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 border border-[#D4AF37]/35 px-3 py-2 rounded-lg transition-colors shadow-sm"
+            >
+              <BookOpenCheck className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>إعراب جملة</span>
+            </button>
 
             {/* AI Deep Grammar & Rhetoric Analysis */}
             <button
@@ -120,6 +190,19 @@ export const Header: React.FC<HeaderProps> = ({
                 {isAiLoading ? "جاري تحليل النحو والبلاغة..." : "إعراب وتحليل بلاغي (AI)"}
               </span>
             </button>
+
+            {/* GitHub Repository Link */}
+            <a
+              id="btn-github-repo"
+              href="https://github.com/dridi0207/arabic-nlp-grammar-suite"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="مستودع المشروع على GitHub (Open Source)"
+              className="flex items-center gap-1.5 text-xs font-medium text-[#A0AEC0] hover:text-white bg-[#161B22] hover:bg-[#21262d] px-2.5 sm:px-3 py-2 rounded-lg border border-[#2D3748] transition-colors"
+            >
+              <Github className="w-4 h-4 text-[#A0AEC0]" />
+              <span className="hidden sm:inline">GitHub</span>
+            </a>
           </div>
 
         </div>

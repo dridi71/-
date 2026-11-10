@@ -7,6 +7,8 @@ import { RepeatedWordsTable } from "./components/RepeatedWordsTable";
 import { AiGrammarModal } from "./components/AiGrammarModal";
 import { WordInspectorModal } from "./components/WordInspectorModal";
 import { ExportReportModal } from "./components/ExportReportModal";
+import { ImportDocumentModal } from "./components/ImportDocumentModal";
+import { SentenceIrabModal } from "./components/SentenceIrabModal";
 
 import { analyzeArabicText } from "./utils/arabicNlp";
 import { SAMPLE_TEXTS, SampleText } from "./data/sampleTexts";
@@ -39,6 +41,9 @@ export default function App() {
   const [inspectorWord, setInspectorWord] = useState<WordItem | null>(null);
   const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+  const [isSentenceIrabOpen, setIsSentenceIrabOpen] = useState<boolean>(false);
+  const [sentenceToIrab, setSentenceToIrab] = useState<string>("");
 
   // Run Real-time Arabic NLP Pipeline
   const { tokens, wordItems, stats, categories } = useMemo(() => {
@@ -109,6 +114,26 @@ export default function App() {
     }
   };
 
+  const handleImportText = (importedText: string, mode: "replace" | "append" = "replace") => {
+    if (mode === "append" && text.trim().length > 0) {
+      setText((prev) => `${prev.trim()}\n\n${importedText.trim()}`);
+    } else {
+      setText(importedText.trim());
+    }
+    setSelectedWordId(null);
+    setAiResult(null);
+  };
+
+  const handleOpenSentenceIrab = (sentence?: string) => {
+    if (sentence && sentence.trim()) {
+      setSentenceToIrab(sentence.trim());
+    } else {
+      const firstSentence = text.split(/[.؟!;\n]+/).map((s) => s.trim()).filter((s) => s.length > 2)[0] || "";
+      setSentenceToIrab(firstSentence);
+    }
+    setIsSentenceIrabOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-[#0F1115] text-[#E2E8F0] font-sans antialiased selection:bg-[#D4AF37] selection:text-[#1A202C] flex flex-col justify-between" dir="rtl">
       
@@ -119,6 +144,9 @@ export default function App() {
           onClear={handleClear}
           onRunAiAnalysis={handleRunAiGrammar}
           onExport={() => setIsExportOpen(true)}
+          onImportText={(t) => handleImportText(t, "replace")}
+          onOpenImportModal={() => setIsImportModalOpen(true)}
+          onOpenSentenceIrab={() => handleOpenSentenceIrab()}
           isAiLoading={isAiLoading}
           hasText={text.trim().length > 0}
         />
@@ -139,6 +167,8 @@ export default function App() {
             onSelectWord={handleSelectWord}
             highlightMode={highlightMode}
             onSetHighlightMode={setHighlightMode}
+            onOpenImportModal={() => setIsImportModalOpen(true)}
+            onOpenSentenceIrab={handleOpenSentenceIrab}
           />
 
           {/* Tabbed View: Grammatical Category Parsing */}
@@ -199,6 +229,19 @@ export default function App() {
         categories={categories}
         rawText={text}
         aiResult={aiResult}
+      />
+
+      <ImportDocumentModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportText={handleImportText}
+        currentTextLength={text.trim().length}
+      />
+
+      <SentenceIrabModal
+        isOpen={isSentenceIrabOpen}
+        onClose={() => setIsSentenceIrabOpen(false)}
+        initialSentence={sentenceToIrab}
       />
 
     </div>

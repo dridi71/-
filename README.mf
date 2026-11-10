@@ -1,0 +1,64 @@
+# ==============================================================================
+# MANIFEST FILE (README.mf)
+# Arabic NLP & Grammar Suite - منصة محلل النصوص والنحو والبلاغة العربية
+# ==============================================================================
+
+Manifest-Version: 1.0.0
+Application-Name: arabic-nlp-grammar-suite
+Application-Title: منصة محلل النصوص والنحو والبلاغة العربية
+Application-Version: 1.0.0
+Author: Mohamed DRIDI <dridi0207@gmail.com>
+License: MIT License (https://opensource.org/licenses/MIT)
+Repository: https://github.com/dridi0207/arabic-nlp-grammar-suite.git
+Homepage: https://github.com/dridi0207/arabic-nlp-grammar-suite#readme
+Issue-Tracker: https://github.com/dridi0207/arabic-nlp-grammar-suite/issues
+
+# ------------------------------------------------------------------------------
+# Runtime & Framework Specifications
+# ------------------------------------------------------------------------------
+Language: TypeScript (~5.8.2)
+Runtime-Target: Node.js (>=20.0.0) / Vercel Serverless / Cloud Run Container
+Frontend-Framework: React 19.0.1, Vite 6.2.3, Tailwind CSS 4.1.14
+Backend-Framework: Express 4.21.2
+AI-Engine: Google Gemini API (@google/genai ^2.4.0)
+Lexicon-Source: معجم لسان العرب لابن منظور (Lisan Al-Arab)
+Audio-Engine: Web Speech Synthesis API (Arabic Male & Female native voices)
+PDF-Engine: html2pdf.js (A4 Document Architecture)
+
+# ------------------------------------------------------------------------------
+# Deployment Platforms & Configurations
+# ------------------------------------------------------------------------------
+Platform-1: Vercel (SPA + Serverless Functions via /api/index.ts)
+Platform-2: Docker (Multi-stage Node.js Alpine container with Dockerfile)
+Platform-3: Google Cloud Run (Containerized Express & Vite build)
+Platform-4: Local Dev Server (Vite middlewares on port 3000 via tsx server.ts)
+
+# ------------------------------------------------------------------------------
+# Core Functional Modules
+# ------------------------------------------------------------------------------
+Module-1: Inline Grammar & Spelling Inspector (المدقق الإملائي والنحوي المباشر)
+Module-2: Lisan Al-Arab Morphological Root & Lexicon Browser (معجم لسان العرب)
+Module-3: Full-text & Lemma Arabic Text-to-Speech (محرك النطق الصوتي الفصيح)
+Module-4: Interactive POS Tagging & Frequency Visualizer (أقسام الكلام والكلمات المكررة)
+Module-5: Gemini AI Syntactic Parsing & Irab Table (الإعراب التفاعلي المفصل)
+Module-6: Rhetorical Figures & Metaphor Analyzer (البلاغة، التشبيه، الاستعارة، الكناية)
+Module-7: Multi-Format Text Import & Export (استيراد وتصدير النصوص، السحب والإفلات، TXT، Markdown، PDF، CSV، JSON)
+
+# ------------------------------------------------------------------------------
+# Environment Variables
+# ------------------------------------------------------------------------------
+Required-Build: None (Static SPA compiles without keys)
+Optional-AI: GEMINI_API_KEY (Enables deep syntactic & rhetorical parsing)
+Port-Dev: 3000
+Port-Prod: 3000 / $PORT
+
+# ------------------------------------------------------------------------------
+# Build Commands
+# ------------------------------------------------------------------------------
+Install-Command: npm install
+Build-Command: npm run build
+Lint-Command: npm run lint
+Start-Command: npm run start
+Dev-Command: npm run dev
+
+# (c) 2026 Mohamed DRIDI. All rights reserved under the MIT License.

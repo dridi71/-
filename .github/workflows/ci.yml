@@ -1,4 +1,4 @@
-name: Build & Lint Check
+name: CI - Build & Lint Check
 
 on:
   push:
@@ -6,16 +6,22 @@ on:
   pull_request:
     branches: [ main, master ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  build-and-lint:
+    name: Lint & Build Verification
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [20.x]
+        node-version: [20.x, 22.x]
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
@@ -24,10 +30,15 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
-      - name: Run Linting & Type Checking
+      - name: Typecheck and Lint
         run: npm run lint
 
-      - name: Run Build
+      - name: Build Application
         run: npm run build
