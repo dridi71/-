@@ -166,12 +166,6 @@ Pour garantir une sécurité maximale et protéger la clé API secrète (`GEMINI
 
 ---
 
-## 📋 ملف البيان (Manifest File)
-
-يتضمن المشروع ملف بيان مفصل [README.mf](./README.mf) يوثق كافة المواصفات التقنية، الإصدارات، المنصات المدعومة، الوحدات الوظيفية، ومخطط المعالجة.
-
----
-
 ## 📄 الترخيص (License)
 
 هذا المشروع مرخص بموجب رخصة **MIT** المفتوحة المصدر - حقوق الطبع والنشر © 2026 **Mohamed DRIDI**.  
