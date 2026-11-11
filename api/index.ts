@@ -2,6 +2,13 @@ import express from "express";
 import { GoogleGenAI, Type } from "@google/genai";
 import mammoth from "mammoth";
 import dotenv from "dotenv";
+import {
+  parseSentenceGrammarRules,
+  fallbackFullGrammarAnalysis,
+  fallbackSynonyms,
+  fallbackAntonyms,
+  fallbackLisanLookup,
+} from "../src/utils/sentenceRuleParser";
 
 dotenv.config();
 

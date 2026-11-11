@@ -12,6 +12,7 @@ import { SentenceIrabModal } from "./components/SentenceIrabModal";
 import { SettingsModal } from "./components/SettingsModal";
 
 import { analyzeArabicText } from "./utils/arabicNlp";
+import { fallbackFullGrammarAnalysis } from "./utils/sentenceRuleParser";
 import { SAMPLE_TEXTS, SampleText } from "./data/sampleTexts";
 import {
   HighlightMode,
@@ -123,16 +124,24 @@ export default function App() {
         body: JSON.stringify({ text }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || "حدث خطأ أثناء إجراء الإعراب بالنحو الذكي");
+        console.warn("AI analysis API returned non-OK, using rule-based grammar analysis fallback");
+        const fallback = fallbackFullGrammarAnalysis(text);
+        setAiResult(fallback);
+        return;
       }
 
+      const data = await response.json();
       setAiResult(data as AiGrammarResult);
     } catch (err: any) {
-      console.error("AI Analysis error:", err);
-      setAiError(err.message || "عذراً، يتعذر الاتصال بخدمة التحليل النحوي الذكي حالياً.");
+      console.warn("AI Analysis error, using rule-based grammar analysis fallback:", err);
+      try {
+        const fallback = fallbackFullGrammarAnalysis(text);
+        setAiResult(fallback);
+        setAiError(null);
+      } catch (fallbackErr: any) {
+        setAiError("تعذر إتمام التحليل. يرجى التأكد من النص والمحاولة مجدداً.");
+      }
     } finally {
       setIsAiLoading(false);
     }

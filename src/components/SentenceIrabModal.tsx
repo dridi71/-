@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { SingleSentenceIrabResult } from "../types";
 import { useArabicTts } from "../utils/useArabicTts";
+import { parseSentenceGrammarRules } from "../utils/sentenceRuleParser";
 
 interface SentenceIrabModalProps {
   isOpen: boolean;
@@ -97,14 +98,24 @@ export const SentenceIrabModal: React.FC<SentenceIrabModalProps> = ({
 
       if (!response.ok) {
         const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error || errJson.details || `خطأ في الخادم (رمز: ${response.status})`);
+        // If server returns error, fallback gracefully to client parser
+        console.warn("Server irab error, falling back to local rule-based engine:", errJson);
+        const fallback = parseSentenceGrammarRules(target);
+        setResult(fallback);
+        return;
       }
 
       const data: SingleSentenceIrabResult = await response.json();
       setResult(data);
     } catch (err: any) {
-      console.error("Sentence Irab error:", err);
-      setError(err?.message || "تعذر إتمام الإعراب بواسطة الذكاء الاصطناعي. الرجاء المحاولة مجدداً.");
+      console.warn("Sentence Irab network error, falling back to local rule parser:", err);
+      try {
+        const fallback = parseSentenceGrammarRules(target);
+        setResult(fallback);
+        setError(null);
+      } catch (fallbackErr: any) {
+        setError(err?.message || "تعذر إتمام الإعراب. الرجاء المحاولة مجدداً.");
+      }
     } finally {
       setLoading(false);
     }

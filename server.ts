@@ -5,6 +5,13 @@ import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 
 import mammoth from "mammoth";
+import {
+  parseSentenceGrammarRules,
+  fallbackFullGrammarAnalysis,
+  fallbackSynonyms,
+  fallbackAntonyms,
+  fallbackLisanLookup,
+} from "./src/utils/sentenceRuleParser";
 
 dotenv.config();
 
@@ -139,12 +146,11 @@ app.post("/api/synonyms", async (req, res) => {
 
     const ai = getGeminiClient();
     if (!ai) {
-      return res.status(500).json({
-        error: "مفتاح GEMINI_API_KEY غير متوفر. يتعذر إكمال توليد المرادفات بالذكاء الاصطناعي.",
-      });
+      return res.json(fallbackSynonyms(word.trim(), contextSentence));
     }
 
-    const prompt = `أنت خبير لغوي وبلاغي متعمق في أدبيات اللغة العربية وتراكيب الفصحى.
+    try {
+      const prompt = `أنت خبير لغوي وبلاغي متعمق في أدبيات اللغة العربية وتراكيب الفصحى.
 المطلوب اقتراح مرادفات وبدائل بلاغية وأسلوبية مثرية للكلمة التالية مع مراعاة سياق ورودها في النص لتحسين الأسلوب الكتابي والتعبيري.
 
 الكلمة المستهدفة: "${word.trim()}"
@@ -174,48 +180,56 @@ ${contextSentence ? `الجملة السياقية التي وردت فيها ا
   "stylisticAdvice": "توصية أسلوبية عامة للكاتب لتحسين الصياغة"
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            word: { type: Type.STRING },
-            stylisticOverview: { type: Type.STRING },
-            synonyms: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  synonym: { type: Type.STRING },
-                  nuance: { type: Type.STRING },
-                  exampleUsage: { type: Type.STRING },
-                  styleTip: { type: Type.STRING },
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              word: { type: Type.STRING },
+              stylisticOverview: { type: Type.STRING },
+              synonyms: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    synonym: { type: Type.STRING },
+                    nuance: { type: Type.STRING },
+                    exampleUsage: { type: Type.STRING },
+                    styleTip: { type: Type.STRING },
+                  },
+                  required: ["synonym", "nuance", "exampleUsage", "styleTip"],
                 },
-                required: ["synonym", "nuance", "exampleUsage", "styleTip"],
               },
+              antonyms: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+              },
+              stylisticAdvice: { type: Type.STRING },
             },
-            antonyms: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-            },
-            stylisticAdvice: { type: Type.STRING },
+            required: ["word", "stylisticOverview", "synonyms", "stylisticAdvice"],
           },
-          required: ["word", "stylisticOverview", "synonyms", "stylisticAdvice"],
         },
-      },
-    });
+      });
 
-    const responseText = response.text || "{}";
-    const data = JSON.parse(responseText);
-    return res.json(data);
+      const responseText = response.text || "{}";
+      const data = JSON.parse(responseText);
+      return res.json(data);
+    } catch (geminiErr: any) {
+      console.warn("Gemini synonyms call failed, falling back to local lexicon:", geminiErr?.message);
+      rotateKeyOnFailure();
+      return res.json(fallbackSynonyms(word.trim(), contextSentence));
+    }
   } catch (err: any) {
     console.error("Gemini Synonyms API Error:", err);
+    if (req.body?.word) {
+      return res.json(fallbackSynonyms(String(req.body.word)));
+    }
     return res.status(500).json({
-      error: "حدث خطأ أثناء اقتراح المرادفات بواسطة الذكاء الاصطناعي",
-      details: err?.message || String(err),
+      error: "حدث خطأ أثناء اقتراح المرادفات",
+      details: sanitizeErrorMessage(err, "خطأ غير متوقع"),
     });
   }
 });
@@ -230,12 +244,11 @@ app.post("/api/antonyms", async (req, res) => {
 
     const ai = getGeminiClient();
     if (!ai) {
-      return res.status(500).json({
-        error: "مفتاح GEMINI_API_KEY غير متوفر. يتعذر إكمال استخراج المتضادات بالذكاء الاصطناعي.",
-      });
+      return res.json(fallbackAntonyms(word.trim()));
     }
 
-    const prompt = `أنت أديب وناقد وبلاغي متخصص في أسرار البلاغة العربية (فن الطباق والمقابلة والتناقض الأدبي) وتنمية مهارات الكتابة الإبداعية والسرد الأدبي.
+    try {
+      const prompt = `أنت أديب وناقد وبلاغي متخصص في أسرار البلاغة العربية (فن الطباق والمقابلة والتناقض الأدبي) وتنمية مهارات الكتابة الإبداعية والسرد الأدبي.
 المطلوب استخراج قائمة بالمتضادات (عكس المعنى) للكلمة التالية لتعزيز مهارات الكتابة الإبداعية للمستخدم، مع تقديم إرشادات كتابية وأمثلة بليغة توضح كيف يُبرز التضاد المعنى (فبضدها تتبين الأشياء).
 
 الكلمة المستهدفة: "${word.trim()}"
@@ -299,14 +312,22 @@ ${contextSentence ? `الجملة السياقية التي وردت فيها: "
       },
     });
 
-    const responseText = response.text || "{}";
-    const data = JSON.parse(responseText);
-    return res.json(data);
+      const responseText = response.text || "{}";
+      const data = JSON.parse(responseText);
+      return res.json(data);
+    } catch (geminiErr: any) {
+      console.warn("Gemini antonyms call failed, using fallback:", geminiErr?.message);
+      rotateKeyOnFailure();
+      return res.json(fallbackAntonyms(word.trim()));
+    }
   } catch (err: any) {
     console.error("Gemini Antonyms API Error:", err);
+    if (req.body?.word) {
+      return res.json(fallbackAntonyms(String(req.body.word)));
+    }
     return res.status(500).json({
-      error: "حدث خطأ أثناء استخراج المتضادات بواسطة الذكاء الاصطناعي",
-      details: err?.message || String(err),
+      error: "حدث خطأ أثناء استخراج المتضادات",
+      details: sanitizeErrorMessage(err, "خطأ غير متوقع"),
     });
   }
 });
@@ -321,12 +342,11 @@ app.post("/api/lisan-lookup", async (req, res) => {
 
     const ai = getGeminiClient();
     if (!ai) {
-      return res.status(500).json({
-        error: "مفتاح GEMINI_API_KEY غير متوفر. يتعذر البحث في لسان العرب بالذكاء الاصطناعي.",
-      });
+      return res.json(fallbackLisanLookup(word.trim(), root));
     }
 
-    const prompt = `أنت خبير ومحقق في التراث اللغوي العربي ومعاجم الفصحى، وتملك استحضاراً ودراية كاملة بمعجم «لسان العرب» للعلامة ابن منظور.
+    try {
+      const prompt = `أنت خبير ومحقق في التراث اللغوي العربي ومعاجم الفصحى، وتملك استحضاراً ودراية كاملة بمعجم «لسان العرب» للعلامة ابن منظور.
 المطلوب إخراج مادة معجمية لسانية موثقة ودقيقة للكلمة والجذر التاليين وفق منهج لسان العرب (نظام الأبواب والفصول بحسب الحرف الأخير والحرف الأول).
 
 الكلمة: "${word.trim()}"
@@ -350,41 +370,49 @@ ${root ? `الجذر المقدر: "${root}"` : ""}
   "derivatives": ["مشتق 1", "مشتق 2", "مشتق 3", "مشتق 4"]
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            root: { type: Type.STRING },
-            bab: { type: Type.STRING },
-            fasl: { type: Type.STRING },
-            meaning: { type: Type.STRING },
-            fullLexicalText: { type: Type.STRING },
-            examplesAndVerses: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              root: { type: Type.STRING },
+              bab: { type: Type.STRING },
+              fasl: { type: Type.STRING },
+              meaning: { type: Type.STRING },
+              fullLexicalText: { type: Type.STRING },
+              examplesAndVerses: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+              },
+              derivatives: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+              },
             },
-            derivatives: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-            },
+            required: ["root", "bab", "fasl", "meaning", "fullLexicalText", "derivatives"],
           },
-          required: ["root", "bab", "fasl", "meaning", "fullLexicalText", "derivatives"],
         },
-      },
-    });
+      });
 
-    const responseText = response.text || "{}";
-    const data = JSON.parse(responseText);
-    return res.json(data);
+      const responseText = response.text || "{}";
+      const data = JSON.parse(responseText);
+      return res.json(data);
+    } catch (geminiErr: any) {
+      console.warn("Gemini lisan call failed, falling back to local Lisan entry:", geminiErr?.message);
+      rotateKeyOnFailure();
+      return res.json(fallbackLisanLookup(word.trim(), root));
+    }
   } catch (err: any) {
     console.error("Gemini Lexicon Lookup Error:", err);
+    if (req.body?.word) {
+      return res.json(fallbackLisanLookup(String(req.body.word), req.body?.root));
+    }
     return res.status(500).json({
-      error: "حدث خطأ أثناء البحث في معجم لسان العرب بواسطة الذكاء الاصطناعي",
-      details: err?.message || String(err),
+      error: "حدث خطأ أثناء البحث في معجم لسان العرب",
+      details: sanitizeErrorMessage(err, "خطأ غير متوقع"),
     });
   }
 });
@@ -404,12 +432,11 @@ app.post("/api/analyze-grammar", async (req, res) => {
 
     const ai = getGeminiClient();
     if (!ai) {
-      return res.status(500).json({
-        error: "مفتاح GEMINI_API_KEY غير متوفر. يتعذر إكمال التحليل الإعرابي المتقدم.",
-      });
+      return res.json(fallbackFullGrammarAnalysis(text));
     }
 
-    const prompt = `أنت عالم لغوي ونحوي وبلاغي متبحر متخصص في لغة العرب وعلوم البلاغة (البيان، المعاني، البديع)، وتعتمد مرجعية «معجم لسان العرب» للعلامة ابن منظور وكتب أسرار البلاغة.
+    try {
+      const prompt = `أنت عالم لغوي ونحوي وبلاغي متبحر متخصص في لغة العرب وعلوم البلاغة (البيان، المعاني، البديع)، وتعتمد مرجعية «معجم لسان العرب» للعلامة ابن منظور وكتب أسرار البلاغة.
 قم بتحليل النص العربي التالي تحليلاً نحواً ولغوياً وبلاغياً شاملاً ودقيقاً مع استخراج كافة الصور البيانية والبلاغية (التشبيه، الاستعارة، الكناية، المجاز المرسل، والمحسنات البديعية).
 
 النص المراد تحليله:
@@ -543,14 +570,22 @@ ${text.slice(0, 3000)}
       },
     });
 
-    const responseText = response.text || "{}";
-    const data = JSON.parse(responseText);
-    return res.json(data);
+      const responseText = response.text || "{}";
+      const data = JSON.parse(responseText);
+      return res.json(data);
+    } catch (geminiErr: any) {
+      console.warn("Gemini analyze-grammar failed, using rule-based fallback:", geminiErr?.message);
+      rotateKeyOnFailure();
+      return res.json(fallbackFullGrammarAnalysis(text));
+    }
   } catch (err: any) {
     console.error("Gemini API Error:", err);
+    if (req.body?.text) {
+      return res.json(fallbackFullGrammarAnalysis(String(req.body.text)));
+    }
     return res.status(500).json({
-      error: "حدث خطأ أثناء إجراء التحليل الإعرابي بواسطة الذكاء الاصطناعي",
-      details: err?.message || String(err),
+      error: "حدث خطأ أثناء إجراء التحليل الإعرابي",
+      details: sanitizeErrorMessage(err, "خطأ غير متوقع"),
     });
   }
 });
@@ -672,12 +707,13 @@ app.post("/api/analyze-sentence", async (req, res) => {
 
     const ai = getGeminiClient();
     if (!ai) {
-      return res.status(500).json({
-        error: "مفتاح GEMINI_API_KEY غير متوفر. يتعذر إكمال التحليل الإعرابي للجملة.",
-      });
+      // Offline fallback: Use the built-in classical Arabic syntactic parser
+      const fallbackResult = parseSentenceGrammarRules(sentence.trim());
+      return res.json(fallbackResult);
     }
 
-    const prompt = `أنت علامة وأستاذ كرسي النحو والصرف والبلاغة في مجمع اللغة العربية، خبير في إعراب القرآن الكريم وشواهد الشعر العربي ومصنفات سيبويه وابن هشام والزمخشري.
+    try {
+      const prompt = `أنت علامة وأستاذ كرسي النحو والصرف والبلاغة في مجمع اللغة العربية، خبير في إعراب القرآن الكريم وشواهد الشعر العربي ومصنفات سيبويه وابن هشام والزمخشري.
 المطلوب منك إعراب الجملة العربية التالية إعراباً وافياً وشاملاً ودقيقاً للغاية:
 
 الجملة المراد إعرابها:
@@ -701,86 +737,95 @@ app.post("/api/analyze-sentence", async (req, res) => {
 7. فوائد ولطائف نحوية (grammaticalNotes): ملاحظات دقيقة عن التقديم والتأخير، الحذف، التضمين، أو القواعد النحوية المستفادة.
 8. اللمسة البلاغية والجمالية في صياغة الجملة (rhetoricalTouch).`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            originalSentence: { type: Type.STRING },
-            diacritizedSentence: { type: Type.STRING },
-            sentenceType: { type: Type.STRING },
-            sentenceRole: { type: Type.STRING },
-            mainPillars: {
-              type: Type.OBJECT,
-              properties: {
-                pillar1: { type: Type.STRING },
-                pillar2: { type: Type.STRING },
-                extra: { type: Type.STRING },
-              },
-              required: ["pillar1", "pillar2"],
-            },
-            wordsDetail: {
-              type: Type.ARRAY,
-              items: {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              originalSentence: { type: Type.STRING },
+              diacritizedSentence: { type: Type.STRING },
+              sentenceType: { type: Type.STRING },
+              sentenceRole: { type: Type.STRING },
+              mainPillars: {
                 type: Type.OBJECT,
                 properties: {
-                  word: { type: Type.STRING },
-                  diacritized: { type: Type.STRING },
-                  pos: { type: Type.STRING },
-                  posArabic: { type: Type.STRING },
-                  irabDetailed: { type: Type.STRING },
-                  grammaticalCase: { type: Type.STRING },
-                  marker: { type: Type.STRING },
-                  markerType: { type: Type.STRING },
-                  syntacticRelation: { type: Type.STRING },
-                  root: { type: Type.STRING },
-                  weight: { type: Type.STRING },
+                  pillar1: { type: Type.STRING },
+                  pillar2: { type: Type.STRING },
+                  extra: { type: Type.STRING },
                 },
-                required: ["word", "diacritized", "pos", "posArabic", "irabDetailed", "grammaticalCase", "marker"],
+                required: ["pillar1", "pillar2"],
               },
-            },
-            subClauses: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  clause: { type: Type.STRING },
-                  clauseType: { type: Type.STRING },
-                  irabRole: { type: Type.STRING },
+              wordsDetail: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    word: { type: Type.STRING },
+                    diacritized: { type: Type.STRING },
+                    pos: { type: Type.STRING },
+                    posArabic: { type: Type.STRING },
+                    irabDetailed: { type: Type.STRING },
+                    grammaticalCase: { type: Type.STRING },
+                    marker: { type: Type.STRING },
+                    markerType: { type: Type.STRING },
+                    syntacticRelation: { type: Type.STRING },
+                    root: { type: Type.STRING },
+                    weight: { type: Type.STRING },
+                  },
+                  required: ["word", "diacritized", "pos", "posArabic", "irabDetailed", "grammaticalCase", "marker"],
                 },
-                required: ["clause", "clauseType", "irabRole"],
               },
+              subClauses: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    clause: { type: Type.STRING },
+                    clauseType: { type: Type.STRING },
+                    irabRole: { type: Type.STRING },
+                  },
+                  required: ["clause", "clauseType", "irabRole"],
+                },
+              },
+              grammaticalNotes: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+              },
+              rhetoricalTouch: { type: Type.STRING },
             },
-            grammaticalNotes: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-            },
-            rhetoricalTouch: { type: Type.STRING },
+            required: [
+              "originalSentence",
+              "diacritizedSentence",
+              "sentenceType",
+              "sentenceRole",
+              "mainPillars",
+              "wordsDetail",
+              "grammaticalNotes",
+            ],
           },
-          required: [
-            "originalSentence",
-            "diacritizedSentence",
-            "sentenceType",
-            "sentenceRole",
-            "mainPillars",
-            "wordsDetail",
-            "grammaticalNotes",
-          ],
         },
-      },
-    });
+      });
 
-    const responseText = response.text || "{}";
-    const data = JSON.parse(responseText);
-    return res.json(data);
+      const responseText = response.text || "{}";
+      const data = JSON.parse(responseText);
+      return res.json(data);
+    } catch (geminiErr: any) {
+      console.warn("Gemini sentence irab call failed, using rule-based parser fallback:", geminiErr?.message);
+      rotateKeyOnFailure();
+      const fallbackResult = parseSentenceGrammarRules(sentence.trim());
+      return res.json(fallbackResult);
+    }
   } catch (err: any) {
     console.error("Sentence Irab API Error:", err);
+    if (req.body?.sentence) {
+      return res.json(parseSentenceGrammarRules(String(req.body.sentence).trim()));
+    }
     return res.status(500).json({
-      error: "حدث خطأ أثناء إجراء إعراب الجملة بالذكاء الاصطناعي",
-      details: err?.message || String(err),
+      error: "حدث خطأ أثناء إجراء إعراب الجملة",
+      details: sanitizeErrorMessage(err, "خطأ غير متوقع"),
     });
   }
 });
