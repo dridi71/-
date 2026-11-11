@@ -9,6 +9,7 @@ import { WordInspectorModal } from "./components/WordInspectorModal";
 import { ExportReportModal } from "./components/ExportReportModal";
 import { ImportDocumentModal } from "./components/ImportDocumentModal";
 import { SentenceIrabModal } from "./components/SentenceIrabModal";
+import { SettingsModal } from "./components/SettingsModal";
 
 import { analyzeArabicText } from "./utils/arabicNlp";
 import { SAMPLE_TEXTS, SampleText } from "./data/sampleTexts";
@@ -17,18 +18,23 @@ import {
   WordItem,
   AiGrammarResult,
 } from "./types";
+import {
+  loadUserPreferences,
+  saveUserPreferences,
+  resetUserPreferences,
+  UserPreferences,
+} from "./utils/userPreferences";
 
 export default function App() {
+  // User Personal Preferences (persisted in localStorage)
+  const [preferences, setPreferences] = useState<UserPreferences>(() => loadUserPreferences());
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+
   // Main Text State initialized with first sample text
   const [text, setText] = useState<string>(SAMPLE_TEXTS[0].content);
 
-  // Analysis Options
-  const [ignoreDiacritics, setIgnoreDiacritics] = useState<boolean>(true);
-  const [ignoreStopWords, setIgnoreStopWords] = useState<boolean>(false);
-  const [minRepeatThreshold, setMinRepeatThreshold] = useState<number>(2);
-
   // UI Interactive States
-  const [highlightMode, setHighlightMode] = useState<HighlightMode>("frequency");
+  const [highlightMode, setHighlightMode] = useState<HighlightMode>(preferences.defaultHighlightMode);
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
 
   // AI Modal States
@@ -45,14 +51,32 @@ export default function App() {
   const [isSentenceIrabOpen, setIsSentenceIrabOpen] = useState<boolean>(false);
   const [sentenceToIrab, setSentenceToIrab] = useState<string>("");
 
-  // Run Real-time Arabic NLP Pipeline
+  // Run Real-time Arabic NLP Pipeline based on user preferences
   const { tokens, wordItems, stats, categories } = useMemo(() => {
     return analyzeArabicText(text, {
-      ignoreDiacriticsForDuplicates: ignoreDiacritics,
-      ignoreStopWordsForDuplicates: ignoreStopWords,
-      minRepeatThreshold,
+      ignoreDiacriticsForDuplicates: preferences.ignoreDiacritics,
+      ignoreStopWordsForDuplicates: preferences.ignoreStopWords,
+      minRepeatThreshold: preferences.minRepeatThreshold,
     });
-  }, [text, ignoreDiacritics, ignoreStopWords, minRepeatThreshold]);
+  }, [
+    text,
+    preferences.ignoreDiacritics,
+    preferences.ignoreStopWords,
+    preferences.minRepeatThreshold,
+  ]);
+
+  // Preference Handlers
+  const handleSavePreferences = (newPrefs: UserPreferences) => {
+    setPreferences(newPrefs);
+    saveUserPreferences(newPrefs);
+    setHighlightMode(newPrefs.defaultHighlightMode);
+  };
+
+  const handleResetPreferences = () => {
+    const defaultPrefs = resetUserPreferences();
+    setPreferences(defaultPrefs);
+    setHighlightMode(defaultPrefs.defaultHighlightMode);
+  };
 
   // Selected Word Object
   const selectedWordObj = useMemo(() => {
@@ -147,6 +171,7 @@ export default function App() {
           onImportText={(t) => handleImportText(t, "replace")}
           onOpenImportModal={() => setIsImportModalOpen(true)}
           onOpenSentenceIrab={() => handleOpenSentenceIrab()}
+          onOpenSettings={() => setIsSettingsOpen(true)}
           isAiLoading={isAiLoading}
           hasText={text.trim().length > 0}
         />
@@ -169,6 +194,8 @@ export default function App() {
             onSetHighlightMode={setHighlightMode}
             onOpenImportModal={() => setIsImportModalOpen(true)}
             onOpenSentenceIrab={handleOpenSentenceIrab}
+            autoGrammarCheck={preferences.autoGrammarCheck}
+            fontSize={preferences.fontSize}
           />
 
           {/* Tabbed View: Grammatical Category Parsing */}
@@ -185,12 +212,18 @@ export default function App() {
           <RepeatedWordsTable
             wordItems={wordItems}
             totalWordsCount={stats.totalWords}
-            minRepeatThreshold={minRepeatThreshold}
-            onChangeMinRepeat={setMinRepeatThreshold}
-            ignoreStopWords={ignoreStopWords}
-            onToggleStopWords={setIgnoreStopWords}
-            ignoreDiacritics={ignoreDiacritics}
-            onToggleDiacritics={setIgnoreDiacritics}
+            minRepeatThreshold={preferences.minRepeatThreshold}
+            onChangeMinRepeat={(newMin) =>
+              handleSavePreferences({ ...preferences, minRepeatThreshold: newMin })
+            }
+            ignoreStopWords={preferences.ignoreStopWords}
+            onToggleStopWords={(ignore) =>
+              handleSavePreferences({ ...preferences, ignoreStopWords: ignore })
+            }
+            ignoreDiacritics={preferences.ignoreDiacritics}
+            onToggleDiacritics={(ignore) =>
+              handleSavePreferences({ ...preferences, ignoreDiacritics: ignore })
+            }
             onSelectWord={handleSelectWord}
             selectedWordId={selectedWordId}
           />
@@ -242,6 +275,14 @@ export default function App() {
         isOpen={isSentenceIrabOpen}
         onClose={() => setIsSentenceIrabOpen(false)}
         initialSentence={sentenceToIrab}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        preferences={preferences}
+        onSavePreferences={handleSavePreferences}
+        onResetPreferences={handleResetPreferences}
       />
 
     </div>

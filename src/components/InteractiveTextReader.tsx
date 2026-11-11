@@ -42,6 +42,8 @@ interface InteractiveTextReaderProps {
   onSetHighlightMode: (mode: HighlightMode) => void;
   onOpenImportModal?: () => void;
   onOpenSentenceIrab?: (sentence?: string) => void;
+  autoGrammarCheck?: boolean;
+  fontSize?: "normal" | "large" | "huge";
 }
 
 export const InteractiveTextReader: React.FC<InteractiveTextReaderProps> = ({
@@ -55,11 +57,21 @@ export const InteractiveTextReader: React.FC<InteractiveTextReaderProps> = ({
   onSetHighlightMode,
   onOpenImportModal,
   onOpenSentenceIrab,
+  autoGrammarCheck = true,
+  fontSize = "normal",
 }) => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showGrammarInspector, setShowGrammarInspector] = useState<boolean>(false);
   const [selectedErrorId, setSelectedErrorId] = useState<string | null>(null);
+
+  // Dynamic font size class from user preferences
+  const readerFontClass =
+    fontSize === "huge"
+      ? "text-2xl sm:text-3xl leading-loose"
+      : fontSize === "large"
+      ? "text-xl sm:text-2xl leading-relaxed"
+      : "text-lg sm:text-xl leading-relaxed";
 
   // Run Real-time Grammar & Spelling Engine
   const grammarErrors = useMemo(() => {
@@ -520,11 +532,11 @@ export const InteractiveTextReader: React.FC<InteractiveTextReaderProps> = ({
               placeholder="اكتب أو الصق النص العربي هنا للتحليل والإعراب وتعداد الكلمات المكررة والتدقيق النحوي..."
               dir="rtl"
               rows={8}
-              className="w-full p-4 rounded-xl border border-[#2D3748] bg-[#0D1117] text-[#CBD5E0] text-lg sm:text-xl leading-relaxed focus:outline-none focus:border-[#D4AF37] font-serif resize-y"
+              className={`w-full p-4 rounded-xl border border-[#2D3748] bg-[#0D1117] text-[#CBD5E0] ${readerFontClass} focus:outline-none focus:border-[#D4AF37] font-serif resize-y`}
             />
             
             {/* Live Inline Suggestions Widget when editing */}
-            {grammarErrors.length > 0 && (
+            {autoGrammarCheck && grammarErrors.length > 0 && (
               <div className="p-3 bg-[#0D1117] border border-amber-500/30 rounded-xl space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-amber-400 flex items-center gap-1.5">
@@ -576,7 +588,7 @@ export const InteractiveTextReader: React.FC<InteractiveTextReaderProps> = ({
             ) : (
               <div
                 dir="rtl"
-                className="text-xl sm:text-2xl leading-relaxed text-[#CBD5E0] font-serif select-text"
+                className={`leading-relaxed text-[#CBD5E0] font-serif select-text ${readerFontClass}`}
               >
                 {tokens.map((token) => {
                   if (!token.isWord || !token.wordItemId) {

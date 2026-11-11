@@ -10,6 +10,7 @@ import {
   Upload,
   BookOpenCheck,
   ShieldCheck,
+  Settings,
 } from "lucide-react";
 import { SAMPLE_TEXTS, SampleText } from "../data/sampleTexts";
 import { parseDocumentFile } from "../utils/documentParser";
@@ -22,6 +23,7 @@ interface HeaderProps {
   onImportText?: (importedText: string) => void;
   onOpenImportModal?: () => void;
   onOpenSentenceIrab?: () => void;
+  onOpenSettings?: () => void;
   isAiLoading: boolean;
   hasText: boolean;
 }
@@ -34,6 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
   onImportText,
   onOpenImportModal,
   onOpenSentenceIrab,
+  onOpenSettings,
   isAiLoading,
   hasText,
 }) => {
@@ -197,6 +200,17 @@ export const Header: React.FC<HeaderProps> = ({
               <span>
                 {isAiLoading ? "جاري تحليل النحو والبلاغة..." : "إعراب وتحليل بلاغي (AI)"}
               </span>
+            </button>
+
+            {/* User Preferences & Settings Button */}
+            <button
+              id="btn-open-settings"
+              onClick={onOpenSettings}
+              title="إعدادات وتفضيلات المستخدم (حفظ محلي في localStorage)"
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#CBD5E0] hover:text-[#D4AF37] bg-[#161B22] hover:bg-[#21262d] px-2.5 sm:px-3 py-2 rounded-lg border border-[#2D3748] transition-colors"
+            >
+              <Settings className="w-4 h-4 text-[#D4AF37]" />
+              <span className="hidden sm:inline">الإعدادات</span>
             </button>
 
             {/* GitHub Repository Link */}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { loadUserPreferences } from "./userPreferences";
 
 export interface UseArabicTtsReturn {
   speak: (textToSpeak: string) => void;
@@ -19,7 +20,13 @@ export interface UseArabicTtsReturn {
 export function useArabicTts(): UseArabicTtsReturn {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
-  const [speechRate, setSpeechRate] = useState<number>(1.0);
+  const [speechRate, setSpeechRate] = useState<number>(() => {
+    try {
+      return loadUserPreferences().speechRate || 1.0;
+    } catch {
+      return 1.0;
+    }
+  });
   const [arabicVoices, setArabicVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
   const [charIndex, setCharIndex] = useState<number | null>(null);
