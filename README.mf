@@ -6,6 +6,8 @@
 Manifest-Version: 1.0.0
 Application-Name: arabic-nlp-grammar-suite
 Application-Title: منصة محلل النصوص والنحو والبلاغة العربية
+Application-Title-FR: Arabe Texte Analyse
+Security-Architecture: Intermediary Secure Server Proxy (GEMINI_API_KEY protégée et masquée côté serveur)
 Application-Version: 1.0.0
 Author: Mohamed DRIDI <dridi0207@gmail.com>
 License: MIT License (https://opensource.org/licenses/MIT)

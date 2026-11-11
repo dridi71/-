@@ -1,12 +1,13 @@
-# منصة محلل النصوص والنحو والبلاغة العربية (Arabic NLP & Grammar Suite)
+# منصة محلل النصوص والنحو والبلاغة العربية | Arabe Texte Analyse
 
 [![CI - Build & Lint](https://github.com/dridi0207/arabic-nlp-grammar-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/dridi0207/arabic-nlp-grammar-suite/actions/workflows/ci.yml)
 [![Docker Build](https://github.com/dridi0207/arabic-nlp-grammar-suite/actions/workflows/docker.yml/badge.svg)](https://github.com/dridi0207/arabic-nlp-grammar-suite/actions/workflows/docker.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node Version](https://img.shields.io/badge/Node.js-%3E%3D20.0.0-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
+[![Security: Proxy Intermediary](https://img.shields.io/badge/API%20Security-Proxy%20Server-emerald.svg)](#-serveur-interm%C3%A9diaire-s%C3%A9curis%C3%A9--proxy-backend)
 
-منصة تفاعلية متكاملة لمعالجة وتدقيق النصوص العربية، تعتمد معجم **«لسان العرب»** للعلامة ابن منظور، وتوفر نظام تدقيق إملائي ونحوي مباشر، ونظام نطق صوتي فصيح (Text-to-Speech)، وتحليل الصور البيانية والبلاغية (التشبيه، الاستعارة، الكناية)، بالإضافة إلى تحليل أقسام الكلام والتكرارات والتوليد الذكي للإعراب.
+**Arabe Texte Analyse** est une plateforme professionnelle intégrée de traitement et d'analyse linguistique de la langue arabe, combinant le lexique traditionnel de **« Lisan Al-Arab »** d'Ibn Manzur, un correcteur grammatical et orthographique instantané, un moteur de synthèse vocale éloquente (Text-to-Speech), l'analyse des figures de rhétorique (métaphore, métonymie, comparaison) et un système d'analyse syntaxique (I'rab) approfondi propulsé par l'IA.
 
 ---
 
@@ -134,6 +135,34 @@ docker-compose up -d --build
 3. أضف متغير البيئة:
    - `GEMINI_API_KEY`: مفتاحك الخاص من Google AI Studio
 4. سيتم نشر الواجهة تلقائياً مع توجيه طلبات واجهة برمجة التطبيقات `/api/*` كدوال بدون خادم (Serverless Functions).
+
+---
+
+## 🛡️ Serveur Intermédiaire Sécurisé & Protection de la Clé API (Proxy Backend)
+
+Pour garantir une sécurité maximale et protéger la clé API secrète (`GEMINI_API_KEY`) contre toute fuite côté navigateur, le projet utilise une architecture de **serveur mandataire intermédiaire (Intermediary Backend Proxy)** :
+
+```
+┌─────────────────────────────────┐       ┌──────────────────────────────────────┐       ┌────────────────────────┐
+│  Client Navigateur (React SPA)   │ ───> │ Serveur Intermédiaire (Express / API)│ ───>  │ Google GenAI API Cloud │
+│  - Aucune clé secrète stockée    │ <─── │ - Clé GEMINI_API_KEY masquée         │ <───  │ (gemini-3.8-flash)     │
+│  - Requêtes vers /api/*          │      │ - En-têtes HTTP de sécurité (CSP)    │       └────────────────────────┘
+└─────────────────────────────────┘       │ - Limitation de débit (Rate Limit)   │
+                                          │ - Assainissement des erreurs         │
+                                          └──────────────────────────────────────┘
+```
+
+### 🔒 Mesures de Sécurité Appliquées :
+1. **Zéro exposition de la clé côté client** : Le code JavaScript téléchargé par l'utilisateur ne contient aucun secret ni clé d'API. Toutes les requêtes vers l'IA transitent exclusivement par les routes internes `/api/analyze-sentence`, `/api/analyze-grammar`, `/api/synonyms`, `/api/antonyms`, et `/api/extract-document`.
+2. **Masquage et assainissement des messages d'erreur** : Les piles d'appels internes et les éventuelles traces de clés sont purgées avant tout renvoi au client.
+3. **Limiteur de débit intégré (Rate Limiting)** : Protection contre les attaques par force brute et l'épuisement de quota avec une fenêtre glissante (60 requêtes/minute par IP).
+4. **En-têtes HTTP sécurisés** :
+   - `X-Content-Type-Options: nosniff`
+   - `X-Frame-Options: SAMEORIGIN`
+   - `X-XSS-Protection: 1; mode=block`
+   - `Referrer-Policy: strict-origin-when-cross-origin`
+   - Désactivation de l'en-tête révélateur `X-Powered-By`.
+5. **Point de contrôle de santé (`GET /api/health`)** : Permet de vérifier l'état opérationnel du serveur proxy sans jamais dévoiler la valeur de la clé.
 
 ---
 

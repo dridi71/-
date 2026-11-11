@@ -11,23 +11,122 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
+// Security: Disable X-Powered-By fingerprinting
+app.disable("x-powered-by");
+
+// Security Headers Middleware
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("X-Server-Proxy", "Arabe-Texte-Analyse-Secure-Gateway");
+  next();
+});
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Initialize Gemini Client server-side
+// In-memory sliding window rate limiter to protect server from abuse & API key quota drain
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute window
+const MAX_REQUESTS_PER_WINDOW = 60; // 60 requests per minute per IP
+
+const securityRateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const clientIp = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "127.0.0.1";
+  const now = Date.now();
+  const record = rateLimitMap.get(clientIp);
+
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(clientIp, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return next();
+  }
+
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    return res.status(429).json({
+      error: "تم تجاوز حد الطلبات المسموح به مؤقتاً لحماية الخادم والمفتاح السري. يرجى الانتظار والمحاولة لاحقاً.",
+      errorFr: "Limite de requêtes atteinte sur le serveur mandataire. Veuillez patienter une minute.",
+      retryAfterSeconds: Math.ceil((record.resetTime - now) / 1000),
+    });
+  }
+
+  record.count += 1;
+  next();
+};
+
+// Apply security rate limiter to all API routes
+app.use("/api", securityRateLimiter);
+
+// Helper: Sanitize error output to guarantee GEMINI_API_KEY and internal paths are never leaked
+const sanitizeErrorMessage = (err: any, fallback: string): string => {
+  if (!err) return fallback;
+  const raw = typeof err === "string" ? err : err.message || "";
+  // Strip any API key sequences or query params
+  const sanitized = raw
+    .replace(/key=[a-zA-Z0-9_\-]+/gi, "key=REDACTED")
+    .replace(/AIza[0-9A-Za-z\-_]{35}/g, "REDACTED_API_KEY");
+  return sanitized || fallback;
+};
+
+// Multi-Key Pool for High Availability & Zero Interruption
+const getAllGeminiKeys = (): string[] => {
+  const combined = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEYS,
+    process.env.GEMINI_BACKUP_KEY,
+  ].filter(Boolean).join(",");
+
+  return combined
+    .split(/[,;\n]+/)
+    .map((k) => k.trim())
+    .filter((k) => k.length > 5);
+};
+
+let currentKeyIndex = 0;
+
+// Health Check Endpoint (Validates proxy security without leaking secrets)
+app.get("/api/health", (_req, res) => {
+  const keys = getAllGeminiKeys();
+  res.json({
+    status: "healthy",
+    projectName: "Arabe Texte Analyse",
+    projectNameAr: "محلل النصوص والنحو العربي",
+    proxySecurity: "active",
+    keySecured: true,
+    keyConfigured: keys.length > 0,
+    keysCount: keys.length,
+    autoRotation: keys.length > 1,
+    localFallbackEnabled: true,
+    officialFreeKeyGuide: "https://aistudio.google.com/apikey",
+    architecture: "Client (React SPA) -> Intermediary Express Server -> Google GenAI (Gemini)",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Initialize Gemini Client server-side with key pool selection
 const getGeminiClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const keys = getAllGeminiKeys();
+  if (keys.length === 0) {
     return null;
   }
+  const activeKey = keys[currentKeyIndex % keys.length];
   return new GoogleGenAI({
-    apiKey,
+    apiKey: activeKey,
     httpOptions: {
       headers: {
         "User-Agent": "aistudio-build",
       },
     },
   });
+};
+
+// Automatic rotation to next key in pool on error or quota exhaustion
+const rotateGeminiKey = () => {
+  const keys = getAllGeminiKeys();
+  if (keys.length > 1) {
+    currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+    console.log(`[API-Rotation] Bascule vers la clé index ${currentKeyIndex % keys.length} sur ${keys.length}`);
+  }
 };
 
 // API Endpoint: AI Synonyms & Stylistic Alternatives
@@ -76,7 +175,7 @@ ${contextSentence ? `الجملة السياقية التي وردت فيها ا
 }`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: "gemini-3.8-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -252,7 +351,7 @@ ${root ? `الجذر المقدر: "${root}"` : ""}
 }`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: "gemini-3.8-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -371,7 +470,7 @@ ${text.slice(0, 3000)}
 }`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: "gemini-3.8-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

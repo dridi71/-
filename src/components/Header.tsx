@@ -9,6 +9,7 @@ import {
   Github,
   Upload,
   BookOpenCheck,
+  ShieldCheck,
 } from "lucide-react";
 import { SAMPLE_TEXTS, SampleText } from "../data/sampleTexts";
 import { parseDocumentFile } from "../utils/documentParser";
@@ -69,16 +70,23 @@ export const Header: React.FC<HeaderProps> = ({
               ع
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-bold text-white tracking-tight">
                   محلل البلاغة والنحو الذكي
                 </h1>
-                <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/30">
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/30">
                   إحصاء وإعراب
                 </span>
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-[#21262d] text-[#CBD5E0] border border-[#30363d] tracking-wide flex items-center gap-1" title="Nom en français">
+                  <span className="text-[#D4AF37] font-semibold">FR:</span> Arabe Texte Analyse
+                </span>
               </div>
-              <p className="text-xs text-[#A0AEC0]">
-                تعداد الكلمات، إبراز التكرار، وتبويب الأقسام النحوية والإعراب
+              <p className="text-xs text-[#A0AEC0] flex items-center gap-2 mt-0.5">
+                <span>تعداد الكلمات، إبراز التكرار، وتبويب الأقسام النحوية والإعراب</span>
+                <span className="hidden lg:inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/25">
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                  <span>خادم وسيط آمن (API Proxy)</span>
+                </span>
               </p>
             </div>
           </div>
