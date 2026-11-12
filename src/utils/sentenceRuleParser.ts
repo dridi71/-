@@ -116,6 +116,7 @@ export function parseSentenceGrammarRules(rawSentence: string): SingleSentenceIr
       sentenceRole: "لا محل لها من الإعراب",
       mainPillars: { pillar1: "غير محدد", pillar2: "غير محدد" },
       wordsDetail: [],
+      grammaticalNotes: [],
     };
   }
 

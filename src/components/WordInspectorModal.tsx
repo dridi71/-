@@ -2,6 +2,11 @@ import React, { useState, useEffect } from "react";
 import { WordItem, TextToken, AiSynonymsResult, AiAntonymsResult } from "../types";
 import { POS_DEFINITIONS } from "../utils/arabicNlp";
 import { getLisanAlArabEntry, LisanEntry } from "../utils/lisanAlArabDictionary";
+import {
+  fallbackSynonyms,
+  fallbackAntonyms,
+  fallbackLisanLookup,
+} from "../utils/sentenceRuleParser";
 import { TtsPlayerBar } from "./TtsPlayerBar";
 import {
   X,
@@ -108,15 +113,16 @@ export const WordInspectorModal: React.FC<WordInspectorModalProps> = ({
       });
 
       if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error || "فشل في البحث المباشر في معجم لسان العرب");
+        setAiLisanEntry(fallbackLisanLookup(wordItem.word, wordItem.root));
+        return;
       }
 
       const data: LisanEntry = await response.json();
       setAiLisanEntry(data);
     } catch (err: any) {
-      console.error("Fetch AI Lisan error:", err);
-      setLisanError(err.message || "حدث خطأ أثناء البحث في لسان العرب بالذكاء الاصطناعي");
+      console.warn("Fetch AI Lisan failed, falling back to local dictionary:", err);
+      setAiLisanEntry(fallbackLisanLookup(wordItem.word, wordItem.root));
+      setLisanError(null);
     } finally {
       setLoadingLisan(false);
     }
@@ -141,15 +147,16 @@ export const WordInspectorModal: React.FC<WordInspectorModalProps> = ({
       });
 
       if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error || "فشل في جلب المرادفات والبدائل البلاغية");
+        setSynonymsData(fallbackSynonyms(wordItem.word, primaryContextSentence));
+        return;
       }
 
       const data: AiSynonymsResult = await response.json();
       setSynonymsData(data);
     } catch (err: any) {
-      console.error("Fetch synonyms error:", err);
-      setSynonymsError(err.message || "حدث خطأ أثناء اقتراح المرادفات بواسطة الذكاء الاصطناعي");
+      console.warn("Fetch synonyms failed, falling back to local lexicon:", err);
+      setSynonymsData(fallbackSynonyms(wordItem.word, primaryContextSentence));
+      setSynonymsError(null);
     } finally {
       setLoadingSynonyms(false);
     }
@@ -182,15 +189,16 @@ export const WordInspectorModal: React.FC<WordInspectorModalProps> = ({
       });
 
       if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error || "فشل في استخراج المتضادات بالذكاء الاصطناعي");
+        setAntonymsData(fallbackAntonyms(wordItem.word));
+        return;
       }
 
       const data: AiAntonymsResult = await response.json();
       setAntonymsData(data);
     } catch (err: any) {
-      console.error("Fetch antonyms error:", err);
-      setAntonymsError(err.message || "حدث خطأ أثناء استخراج المتضادات بواسطة الذكاء الاصطناعي");
+      console.warn("Fetch antonyms failed, falling back to local lexicon:", err);
+      setAntonymsData(fallbackAntonyms(wordItem.word));
+      setAntonymsError(null);
     } finally {
       setLoadingAntonyms(false);
     }

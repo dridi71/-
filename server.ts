@@ -219,7 +219,7 @@ ${contextSentence ? `الجملة السياقية التي وردت فيها ا
       return res.json(data);
     } catch (geminiErr: any) {
       console.warn("Gemini synonyms call failed, falling back to local lexicon:", geminiErr?.message);
-      rotateKeyOnFailure();
+      rotateGeminiKey();
       return res.json(fallbackSynonyms(word.trim(), contextSentence));
     }
   } catch (err: any) {
@@ -317,7 +317,7 @@ ${contextSentence ? `الجملة السياقية التي وردت فيها: "
       return res.json(data);
     } catch (geminiErr: any) {
       console.warn("Gemini antonyms call failed, using fallback:", geminiErr?.message);
-      rotateKeyOnFailure();
+      rotateGeminiKey();
       return res.json(fallbackAntonyms(word.trim()));
     }
   } catch (err: any) {
@@ -402,7 +402,7 @@ ${root ? `الجذر المقدر: "${root}"` : ""}
       return res.json(data);
     } catch (geminiErr: any) {
       console.warn("Gemini lisan call failed, falling back to local Lisan entry:", geminiErr?.message);
-      rotateKeyOnFailure();
+      rotateGeminiKey();
       return res.json(fallbackLisanLookup(word.trim(), root));
     }
   } catch (err: any) {
@@ -415,11 +415,6 @@ ${root ? `الجذر المقدر: "${root}"` : ""}
       details: sanitizeErrorMessage(err, "خطأ غير متوقع"),
     });
   }
-});
-
-// API Endpoint: Health Check
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", geminiConfigured: !!process.env.GEMINI_API_KEY });
 });
 
 // API Endpoint: Deep Arabic Grammatical Analysis & Word Classification
@@ -575,7 +570,7 @@ ${text.slice(0, 3000)}
       return res.json(data);
     } catch (geminiErr: any) {
       console.warn("Gemini analyze-grammar failed, using rule-based fallback:", geminiErr?.message);
-      rotateKeyOnFailure();
+      rotateGeminiKey();
       return res.json(fallbackFullGrammarAnalysis(text));
     }
   } catch (err: any) {
@@ -634,11 +629,11 @@ app.post("/api/extract-document", async (req, res) => {
       }
     }
 
-    // Call Gemini 2.5 Flash for document parsing, scanned PDFs, or complex layouts
+    // Call Gemini for scanned PDFs or complex layouts
     const ai = getGeminiClient();
     if (!ai) {
-      return res.status(500).json({
-        error: "مفتاح GEMINI_API_KEY غير متوفر لاستخراج النص بواسطة الذكاء الاصطناعي.",
+      return res.status(400).json({
+        error: "يُرجى استيراد ملف نصي رقمي (PDF غير ممسوح ضوئياً أو DOCX أو TXT) لأن خدمة قراءة الصور الضوئية (OCR) غير مفعلة حالياً.",
       });
     }
 
@@ -662,37 +657,45 @@ app.post("/api/extract-document", async (req, res) => {
 4. الحفاظ على التشكيل وعلامات الترقيم الأصلية إن وجدت.
 5. الإخراج المطلوب: أرسل النص العربي المستخرج فقط مباشرة دون أي مقدمة أو خاتمة أو شروحات إضافية ودون استخدام وسوم كود ماركداون (\`\`\`).`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              inlineData: {
-                mimeType: resolvedMimeType,
-                data: cleanBase64,
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                inlineData: {
+                  mimeType: resolvedMimeType,
+                  data: cleanBase64,
+                },
               },
-            },
-            {
-              text: prompt,
-            },
-          ],
-        },
-      ],
-    });
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+      });
 
-    const extractedText = (response.text || "").trim();
-    return res.json({
-      text: extractedText,
-      method: "gemini-ai",
-      fileName,
-    });
+      const extractedText = (response.text || "").trim();
+      return res.json({
+        text: extractedText,
+        method: "gemini-ai",
+        fileName,
+      });
+    } catch (geminiErr: any) {
+      rotateGeminiKey();
+      return res.status(500).json({
+        error: "حدث خطأ أثناء استخراج النص من المستند",
+        details: sanitizeErrorMessage(geminiErr, "فشل استخراج النص الضوئي"),
+      });
+    }
   } catch (err: any) {
     console.error("Document extraction error:", err);
     return res.status(500).json({
       error: "حدث خطأ أثناء استخراج النص من المستند",
-      details: err?.message || String(err),
+      details: sanitizeErrorMessage(err, "خطأ غير متوقع"),
     });
   }
 });
@@ -814,7 +817,7 @@ app.post("/api/analyze-sentence", async (req, res) => {
       return res.json(data);
     } catch (geminiErr: any) {
       console.warn("Gemini sentence irab call failed, using rule-based parser fallback:", geminiErr?.message);
-      rotateKeyOnFailure();
+      rotateGeminiKey();
       const fallbackResult = parseSentenceGrammarRules(sentence.trim());
       return res.json(fallbackResult);
     }
@@ -831,13 +834,31 @@ app.post("/api/analyze-sentence", async (req, res) => {
 });
 
 async function startServer() {
-  // Vite middleware for development
+  // Vite middleware for development (non-blocking listen so port 3000 binds immediately)
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
+    let viteInstance: Awaited<ReturnType<typeof createViteServer>> | null = null;
+    const vitePromise = createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
+    })
+      .then((v) => {
+        viteInstance = v;
+        return v;
+      })
+      .catch((err) => {
+        console.error("Vite middleware initialization error:", err);
+        throw err;
+      });
+
+    app.use(async (req, res, next) => {
+      if (req.path.startsWith("/api")) return next();
+      try {
+        const vite = viteInstance || (await vitePromise);
+        vite.middlewares(req, res, next);
+      } catch (err) {
+        next(err);
+      }
     });
-    app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
